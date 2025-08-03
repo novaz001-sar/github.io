@@ -1,0 +1,1973 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第一人称操作教学 (V14.6 - WASD交互优化)</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+            background-color: #000;
+            color: white;
+        }
+        canvas {
+            display: block;
+        }
+        .overlay {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            text-align: center;
+            z-index: 11;
+        }
+        #instructions {
+            font-size: 18px;
+            font-weight: bold;
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            text-shadow: 2px 2px 4px #000000;
+            pointer-events: none;
+            width: 350px;
+            line-height: 1.6;
+            z-index: 10;
+        }
+        
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 2px;
+            height: 20px;
+            background-color: #0f0;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            display: none; 
+        }
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            top: 9px;
+            left: -9px;
+            width: 20px;
+            height: 2px;
+            background-color: #0f0;
+        }
+
+        #blocker {
+            cursor: pointer;
+        }
+        #key-display {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        .key-row {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+        }
+        .key {
+            width: 60px;
+            height: 60px;
+            background-color: rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            line-height: 1.2;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            transition: all 0.1s ease;
+        }
+        .key-long {
+            width: 194px;
+        }
+        .key-active {
+            background-color: rgba(255, 255, 255, 0.8);
+            color: black;
+            transform: scale(0.95);
+        }
+        #npc-counter, #landmark-counter {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+            display: none;
+        }
+        #timer {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+            display: none;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        #menu-overlay {
+            display: none;
+            z-index: 12;
+        }
+        #menu-content {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .menu-button, .mode-button {
+            background-color: #444;
+            border: 2px solid #888;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 12px;
+            width: 280px;
+            transition: background-color 0.3s, transform 0.1s;
+            flex-shrink: 0;
+        }
+        .menu-button:hover, .mode-button:hover {
+            background-color: #666;
+        }
+        .menu-button:active, .mode-button:active {
+            transform: scale(0.98);
+        }
+        .menu-button.disabled {
+            background-color: #222;
+            color: #666;
+            border-color: #444;
+            cursor: not-allowed;
+        }
+        .level-time {
+            font-size: 12px;
+            color: #ffdd57;
+            margin-top: 5px;
+            font-weight: normal;
+        }
+        #level-select-menu {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+        }
+        #menu-content::-webkit-scrollbar { width: 8px; }
+        #menu-content::-webkit-scrollbar-track { background: #222; border-radius: 4px; }
+        #menu-content::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        #menu-content::-webkit-scrollbar-thumb:hover { background: #555; }
+        
+        #mode-selection {
+            z-index: 13;
+        }
+        #mode-selection h1 {
+            font-size: 36px;
+            margin-bottom: 30px;
+            text-shadow: 3px 3px 6px #000;
+        }
+        .mode-button {
+            margin: 10px;
+        }
+
+        #minimap-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 200px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 2px solid #fff;
+            border-radius: 10px;
+            display: none;
+            z-index: 10;
+        }
+        #minimap {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+        }
+
+        #narration-box {
+            position: absolute;
+            bottom: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            border: 2px solid #888;
+            font-size: 16px;
+            text-align: center;
+            line-height: 1.5;
+            z-index: 15;
+            display: none;
+            max-width: 80%;
+            pointer-events: none;
+        }
+        
+        #profile-form {
+            background-color: rgba(20, 20, 20, 0.85);
+            padding: 30px 40px;
+            border-radius: 20px;
+            border: 2px solid #888;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 90%;
+            max-width: 400px;
+        }
+        #profile-form h2 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+            color: #ffdd57;
+            text-shadow: 2px 2px 4px #000;
+        }
+        #nickname-input {
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: 2px solid #555;
+            background-color: #333;
+            color: white;
+            text-align: center;
+        }
+        #nickname-input::placeholder {
+            color: #999;
+        }
+        #gender-select {
+            display: flex;
+            gap: 15px;
+        }
+        #gender-select button {
+            flex: 1;
+            padding: 12px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 2px solid #888;
+            border-radius: 8px;
+            background-color: #444;
+            color: white;
+            transition: all 0.2s ease;
+        }
+        #gender-select button.selected {
+            background-color: #ffdd57;
+            color: black;
+            border-color: #fff;
+            transform: scale(1.05);
+        }
+        #start-campaign-button {
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 10px;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        #start-campaign-button:hover {
+            background-color: #45a049;
+        }
+
+        #star-container {
+            font-size: 50px;
+            margin-top: 15px;
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+        }
+        .star-filled {
+            color: #ffdd57;
+        }
+        .star-empty {
+            color: #555;
+        }
+        .level-stars {
+            font-size: 14px;
+            color: #ffdd57;
+            margin-left: 10px;
+        }
+
+        #player-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 1px solid #888;
+            text-align: left;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px #000;
+            z-index: 10;
+            display: none;
+        }
+        #player-name {
+            font-size: 18px;
+            color: #ffdd57;
+        }
+        #player-stars {
+            margin-top: 5px;
+        }
+
+        #results-overlay {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(180deg, rgba(20,20,40,0.95) 0%, rgba(40,20,50,0.95) 100%);
+            z-index: 15;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #results-content {
+            background-color: rgba(0,0,0,0.4);
+            border: 2px solid #ffdd57;
+            border-radius: 20px;
+            padding: 30px 40px;
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(255, 221, 87, 0.5);
+        }
+        #results-title {
+            font-size: 36px;
+            font-weight: bold;
+            color: #ffdd57;
+            margin-bottom: 10px;
+            text-shadow: 3px 3px 5px #000;
+        }
+        #player-final-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        #podium-container {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 5px;
+            height: 180px;
+            margin-bottom: 20px;
+        }
+        .podium-step {
+            width: 100px;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: black;
+            font-weight: bold;
+            padding: 10px;
+            box-sizing: border-box;
+            line-height: 1.2;
+        }
+        #podium-2 { background: linear-gradient(45deg, #c0c0c0, #a9a9a9); height: 120px; border: 2px solid #e0e0e0; }
+        #podium-1 { background: linear-gradient(45deg, #ffd700, #f0c000); height: 160px; border: 2px solid #fff0a0; }
+        #podium-3 { background: linear-gradient(45deg, #cd7f32, #a0522d); height: 90px; border: 2px solid #e09f50; }
+        .podium-rank {
+            font-size: 24px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        .podium-rank-en {
+            font-size: 14px;
+        }
+        .podium-stars {
+            font-size: 18px;
+            margin-top: 5px;
+        }
+        #encouragement-message {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-top: 20px;
+            margin-bottom: 30px;
+            color: #f0f0f0;
+        }
+        #encouragement-message .en {
+            font-size: 14px;
+            color: #ccc;
+            margin-top: 8px;
+            display: block;
+        }
+        #close-results-button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: background-color 0.3s;
+        }
+        #close-results-button:hover {
+            background-color: #45a049;
+        }
+        
+        #training-command {
+            position: absolute;
+            top: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+            display: none;
+            background-color: rgba(0,0,0,0.5);
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 10;
+        }
+        #training-choice-box {
+            background-color: rgba(20, 20, 20, 0.9);
+            padding: 30px 40px;
+            border-radius: 20px;
+            border: 2px solid #888;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 90%;
+            max-width: 450px;
+        }
+    </style>
+</head>
+<body>
+    <div id="mode-selection" class="overlay">
+        <h1>选择游戏模式 / Select Mode</h1>
+        <button id="campaign-mode-button" class="mode-button">通关模式<br><span style="font-size:12px;">Campaign Mode</span></button>
+        <button id="free-mode-button" class="mode-button">自由模式<br><span style="font-size:12px;">Free Mode</span></button>
+    </div>
+
+    <div id="profile-creation-overlay" class="overlay" style="display: none; z-index: 14;">
+        <div id="profile-form">
+            <h2>创建您的档案 / Create Your Profile</h2>
+            <input type="text" id="nickname-input" placeholder="请输入您的昵称 / Enter Nickname">
+            <div id="gender-select">
+                <button id="male-button" data-gender="male">我是叔叔 / I am Uncle</button>
+                <button id="female-button" data-gender="female">我是阿姨 / I am Auntie</button>
+            </div>
+            <button id="start-campaign-button">开始游戏 / Start Game</button>
+        </div>
+    </div>
+
+    <div id="player-info">
+        <div id="player-name"></div>
+        <div id="player-stars"></div>
+    </div>
+
+    <div id="blocker" class="overlay" style="display: none;">
+        <div id="instructions">
+            <div id="instruction-text"></div>
+            <div id="star-container"></div>
+        </div>
+    </div>
+    
+    <div id="results-overlay" class="overlay">
+        <div id="results-content">
+            <h1 id="results-title">颁奖典礼 / Award Ceremony</h1>
+            <p id="player-final-title"></p>
+            <div id="podium-container">
+                <div id="podium-2" class="podium-step"></div>
+                <div id="podium-1" class="podium-step"></div>
+                <div id="podium-3" class="podium-step"></div>
+            </div>
+            <p id="encouragement-message"></p>
+            <button id="close-results-button">太棒了！ / Awesome! (Back to Menu)</button>
+        </div>
+    </div>
+
+    <div id="training-choice-overlay" class="overlay" style="display: none; z-index: 16;">
+        <div id="training-choice-box">
+            <h2>移动特训 / Movement Special Training</h2>
+            <p style="font-size: 16px; line-height: 1.5;">
+                您想开始带有指令的移动特训吗？<br>
+                <span style="font-size: 14px; color: #ccc;">Would you like to start special training with commands?</span>
+            </p>
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <button id="training-yes" class="menu-button" style="width: 150px;">是 / Yes</button>
+                <button id="training-no" class="menu-button" style="width: 150px; background-color: #777;">否 / No</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="training-command"></div>
+
+    <div id="crosshair"></div>
+    <div id="timer">0.00s</div>
+    <div id="minimap-container"><canvas id="minimap"></canvas></div>
+    <div id="narration-box"></div>
+
+    <div id="menu-overlay" class="overlay">
+        <div id="menu-content">
+            <button class="menu-button" id="resume-button">继续游戏<br>Resume</button>
+            <button class="menu-button" id="restart-button">重新开始<br>Restart</button>
+            <button class="menu-button" id="select-level-button">选择关卡<br>Select Level</button>
+            <div id="level-select-menu"></div>
+            <button class="menu-button" id="warmup-button">返回热身<br>Warm-up</button>
+            <button class="menu-button" id="main-menu-button">返回主菜单<br>Main Menu</button>
+        </div>
+    </div>
+
+    <div id="npc-counter"></div>
+    <div id="landmark-counter"></div>
+
+    <div id="key-display">
+        <div class="key-row">
+            <div class="key" id="key-w">W</div>
+        </div>
+        <div class="key-row">
+            <div class="key" id="key-a">A</div>
+            <div class="key" id="key-s">S</div>
+            <div class="key" id="key-d">D</div>
+        </div>
+        <div class="key-row">
+            <div class="key key-long" id="key-space">空格<br>Space</div>
+        </div>
+         <div class="key-row">
+            <div class="key key-long" id="key-shift">Shift</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // --- Basic Setup ---
+        let scene, camera, renderer;
+        let playerVelocity, playerOnFloor;
+        const playerHeight = 1.8;
+        const playerCrouchHeight = 1.0;
+        const playerRadius = 0.5;
+        let isCrouching = false;
+        
+        const moveSpeed = 5.0;
+        const crouchSpeed = 2.5;
+        const keys = {};
+        const clock = new THREE.Clock();
+        const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+        const PI_2 = Math.PI / 2;
+
+        const gravity = 30.0;
+        const jumpForce = 10.0;
+        
+        // --- Game Logic Variables ---
+        let currentStage = -1;
+        let gameMode = '';
+        let unlockedLevel = 1;
+        let levelTimes = {};
+        let canPlayerMove = true;
+        let hasPlayerMoved = false;
+
+        // --- Reward System Variables ---
+        let playerProfile = { nickname: '', title: '' };
+        let levelStars = {};
+        const starTimeThresholds = {
+            1: { s3: 5,  s2: 10 }, 2: { s3: 10, s2: 15 }, 3: { s3: 20, s2: 25 },
+            4: { s3: 10, s2: 15 }, 5: { s3: 15, s2: 20 }, 6: { s3: 15, s2: 25 },
+            7: { s3: 30, s2: 45 }, 8: { s3: 40, s2: 55 }, 9: { s3: 50, s2: 65 },
+            10: { s3: 30, s2: 45 }, 11: { s3: 45, s2: 60 }, 12: { s3: 60, s2: 75 },
+            13: { s3: 90, s2: 120 }, 14: { s3: 200,s2: 300 }, 15: { s3: 400,s2: 500 }
+        };
+
+        // --- UI Elements ---
+        let instructionElement, blockerElement, crosshairElement, npcCounterElement, landmarkCounterElement;
+        let menuOverlay, levelSelectMenu, modeSelectionScreen, playerInfoElement;
+        let keyDisplay, keyW, keyA, keyS, keyD, keySpace, keyShift;
+        let narrationBox, resultsOverlay, trainingChoiceOverlay, trainingCommandElement;
+
+        // --- Stage Specific Variables ---
+        let stageObjects = [];
+        let collidables = [];
+        let animatedObjects = [];
+        let npcs = [];
+        let landmarks = [];
+        let nextLandmarkIndex = 0;
+        const raycaster = new THREE.Raycaster();
+        const centerScreen = new THREE.Vector2(0, 0);
+        let stage1Targets = [];
+        let aimedTargets = new Set();
+        let stageCompletionFlag = false; 
+        let isTransitioning = false;
+        let highlightedRing = null;
+        let narrationFlags = { wasd: false, skill: false, target: false };
+        
+        // --- WASD Training Area Variables ---
+        let wasdTrainingKeys = [];
+        let wasdCenterButton = null;
+        let wasdTrainingActivated = false;
+        let wasdTrainingMode = null; // null, 'special', 'free'
+        let currentTrainingKey = null; // 'W', 'A', 'S', 'D'
+        let isWaitingForNextCommand = false;
+
+        // --- Shooting System Variables ---
+        let toyGun;
+        let bullets = [];
+        let bulletHoles = [];
+        let shootCooldown = 0;
+
+        // --- Timer & Minimap Variables ---
+        let levelStartTime = 0;
+        let timePausedAt = 0;
+        let isTimerRunning = false;
+        let timerElement;
+        let minimapContainer, minimap, minimapCtx;
+        let firework3DParticles = [];
+        let fireworksInterval = null;
+        
+        init();
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb);
+            scene.fog = new THREE.Fog(0x87ceeb, 0, 150);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.y = playerHeight;
+
+            createToyGun();
+            camera.add(toyGun);
+            scene.add(camera);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+            
+            instructionElement = document.getElementById('instructions');
+            blockerElement = document.getElementById('blocker');
+            crosshairElement = document.getElementById('crosshair');
+            npcCounterElement = document.getElementById('npc-counter');
+            landmarkCounterElement = document.getElementById('landmark-counter');
+            menuOverlay = document.getElementById('menu-overlay');
+            levelSelectMenu = document.getElementById('level-select-menu');
+            modeSelectionScreen = document.getElementById('mode-selection');
+            playerInfoElement = document.getElementById('player-info');
+            keyDisplay = document.getElementById('key-display');
+            keyW = document.getElementById('key-w');
+            keyA = document.getElementById('key-a');
+            keyS = document.getElementById('key-s');
+            keyD = document.getElementById('key-d');
+            keySpace = document.getElementById('key-space');
+            keyShift = document.getElementById('key-shift');
+            timerElement = document.getElementById('timer');
+            minimapContainer = document.getElementById('minimap-container');
+            minimap = document.getElementById('minimap');
+            minimap.width = 200;
+            minimap.height = 200;
+            minimapCtx = minimap.getContext('2d');
+            narrationBox = document.getElementById('narration-box');
+            resultsOverlay = document.getElementById('results-overlay');
+            trainingChoiceOverlay = document.getElementById('training-choice-overlay');
+            trainingCommandElement = document.getElementById('training-command');
+
+            playerVelocity = new THREE.Vector3();
+
+            setupModeSelection();
+            setupMenu();
+            setupResultsScreen();
+            setupTrainingChoice();
+            document.addEventListener('pointerlockchange', onPointerlockChange, false);
+            document.addEventListener('pointerlockerror', onPointerlockError, false);
+            document.addEventListener('keydown', onKeyDown, false);
+            document.addEventListener('keyup', onKeyUp, false);
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('mousedown', onMouseDown, false);
+
+            animate();
+        }
+
+        function loadProgress() {
+            if (gameMode === 'campaign') {
+                const savedUnlockedLevel = localStorage.getItem('unlockedLevel');
+                unlockedLevel = savedUnlockedLevel ? parseInt(savedUnlockedLevel, 10) : 1;
+                const savedLevelTimes = localStorage.getItem('levelTimes_campaign');
+                levelTimes = savedLevelTimes ? JSON.parse(savedLevelTimes) : {};
+                const savedStars = localStorage.getItem('levelStars');
+                levelStars = savedStars ? JSON.parse(savedStars) : {};
+            } else {
+                const savedLevelTimes = localStorage.getItem('levelTimes_free');
+                levelTimes = savedLevelTimes ? JSON.parse(savedLevelTimes) : {};
+            }
+        }
+
+        function saveProgress() {
+            if (gameMode === 'campaign') {
+                localStorage.setItem('unlockedLevel', unlockedLevel);
+                localStorage.setItem('levelTimes_campaign', JSON.stringify(levelTimes));
+                localStorage.setItem('levelStars', JSON.stringify(levelStars));
+            } else {
+                localStorage.setItem('levelTimes_free', JSON.stringify(levelTimes));
+            }
+        }
+        
+        function recordTime(stage, time) {
+            const stageId = stage;
+            if (!levelTimes[stageId] || time < levelTimes[stageId]) {
+                levelTimes[stageId] = time;
+            }
+        }
+
+        function setupModeSelection() {
+            document.getElementById('campaign-mode-button').addEventListener('click', () => {
+                gameMode = 'campaign';
+                const savedProfile = localStorage.getItem('playerProfile');
+                if (savedProfile) {
+                    playerProfile = JSON.parse(savedProfile);
+                    startGame();
+                } else {
+                    modeSelectionScreen.style.display = 'none';
+                    document.getElementById('profile-creation-overlay').style.display = 'flex';
+                }
+            });
+            document.getElementById('free-mode-button').addEventListener('click', () => { 
+                gameMode = 'free'; 
+                startGame(); 
+            });
+            setupProfileCreation();
+        }
+
+        function setupProfileCreation() {
+            const nicknameInput = document.getElementById('nickname-input');
+            const maleButton = document.getElementById('male-button');
+            const femaleButton = document.getElementById('female-button');
+            const startButton = document.getElementById('start-campaign-button');
+            let selectedGender = '';
+
+            maleButton.addEventListener('click', () => {
+                selectedGender = 'male';
+                maleButton.classList.add('selected');
+                femaleButton.classList.remove('selected');
+            });
+
+            femaleButton.addEventListener('click', () => {
+                selectedGender = 'female';
+                femaleButton.classList.add('selected');
+                maleButton.classList.remove('selected');
+            });
+
+            startButton.addEventListener('click', () => {
+                const nickname = nicknameInput.value.trim();
+                if (!nickname) {
+                    nicknameInput.style.border = '2px solid red';
+                    return;
+                }
+                 nicknameInput.style.border = '2px solid #555';
+                if (!selectedGender) {
+                    maleButton.style.border = '2px solid red';
+                    femaleButton.style.border = '2px solid red';
+                    return;
+                }
+                playerProfile.nickname = nickname;
+                playerProfile.title = selectedGender === 'male' ? `Uncle ${nickname}` : `Auntie ${nickname}`;
+                localStorage.setItem('playerProfile', JSON.stringify(playerProfile));
+                document.getElementById('profile-creation-overlay').style.display = 'none';
+                startGame();
+            });
+        }
+        
+        function startGame() {
+            loadProgress();
+            modeSelectionScreen.style.display = 'none';
+            loadStage(0);
+        }
+
+        function setupMenu() {
+            blockerElement.addEventListener('click', () => {
+                if (stageCompletionFlag) {
+                    if (gameMode === 'campaign' && currentStage < 16) {
+                         hideMenuAndLoad(currentStage + 1);
+                    } else {
+                        stageCompletionFlag = false;
+                        blockerElement.style.display = 'none';
+                        menuOverlay.style.display = 'flex';
+                        updateLevelSelectMenu();
+                    }
+                    return;
+                }
+                document.body.requestPointerLock();
+            });
+            document.getElementById('resume-button').addEventListener('click', () => { document.body.requestPointerLock(); });
+            document.getElementById('restart-button').addEventListener('click', () => { hideMenuAndLoad(currentStage); });
+            document.getElementById('warmup-button').addEventListener('click', () => { hideMenuAndLoad(0); });
+            document.getElementById('main-menu-button').addEventListener('click', () => {
+                if (document.pointerLockElement) document.exitPointerLock();
+                currentStage = -1;
+                stopTimer();
+                menuOverlay.style.display = 'none';
+                modeSelectionScreen.style.display = 'flex';
+                if (playerInfoElement) playerInfoElement.style.display = 'none';
+            });
+            document.getElementById('select-level-button').addEventListener('click', (event) => {
+                event.stopPropagation();
+                levelSelectMenu.style.display = levelSelectMenu.style.display === 'flex' ? 'none' : 'flex';
+            });
+        }
+        
+        function setupResultsScreen() {
+            document.getElementById('close-results-button').addEventListener('click', () => {
+                resultsOverlay.style.display = 'none';
+                const mainMenuButton = document.getElementById('main-menu-button');
+                if (mainMenuButton) mainMenuButton.click();
+            });
+        }
+        
+        function setupTrainingChoice() {
+            document.getElementById('training-yes').addEventListener('click', () => {
+                wasdTrainingMode = 'special';
+                trainingChoiceOverlay.style.display = 'none';
+                document.body.requestPointerLock();
+                startNextTrainingCommand();
+            });
+            document.getElementById('training-no').addEventListener('click', () => {
+                wasdTrainingMode = 'free';
+                trainingChoiceOverlay.style.display = 'none';
+                document.body.requestPointerLock();
+            });
+        }
+
+        function updateLevelSelectMenu() {
+            const stageNames = [
+                "1. 看/Look", "2. 前进/Forward", "3. 移动/Move", "4. 跳跃/Jump", "5. 综合/Skills", 
+                "6. 计时挑战0/Timed0", "7. 计时挑战1/Timed1", "8. 计时挑战2/Timed2", "9. 计时挑战3/Timed3",
+                "10. 追逐1/Chase1", "11. 追逐2/Chase2", "12. 追逐3/Chase3", "13. 地标寻路1/Landmark1",
+                "14. 地标寻路2/Landmark2", "15. 地标寻路3/Landmark3", "16. 祝贺/Congratulations"
+            ];
+            levelSelectMenu.innerHTML = ''; 
+            stageNames.forEach((name, i) => {
+                const stageIndex = i + 1;
+                const button = document.createElement('button');
+                button.className = 'menu-button';
+                const isLocked = gameMode === 'campaign' && stageIndex > unlockedLevel;
+                let buttonHTML = name;
+                if (isLocked) {
+                    buttonHTML += ' (锁定 / Locked)';
+                    button.classList.add('disabled');
+                } else {
+                    const bestTime = levelTimes[stageIndex];
+                    if (bestTime) { buttonHTML += `<div class="level-time">最快 / Best: ${bestTime.toFixed(2)}s</div>`; }
+                    if (gameMode === 'campaign' && levelStars[stageIndex]) {
+                         buttonHTML += `<div class="level-stars">${displayStars(levelStars[stageIndex])}</div>`;
+                    }
+                    button.addEventListener('click', (event) => { event.stopPropagation(); hideMenuAndLoad(stageIndex); });
+                }
+                button.innerHTML = buttonHTML;
+                levelSelectMenu.appendChild(button);
+            });
+        }
+
+        function hideMenuAndLoad(stage) {
+            menuOverlay.style.display = 'none';
+            levelSelectMenu.style.display = 'none';
+            isTransitioning = true;
+            if (document.pointerLockElement) { document.exitPointerLock(); }
+            setTimeout(() => { loadStage(stage); }, 100);
+        }
+
+        function onPointerlockChange() {
+            if (document.pointerLockElement === document.body) {
+                isTransitioning = false; 
+                menuOverlay.style.display = 'none';
+                blockerElement.style.display = 'none';
+                crosshairElement.style.display = 'block';
+                keyDisplay.style.opacity = '1';
+                document.addEventListener('mousemove', onMouseMove, false);
+                resumeTimer();
+            } else {
+                crosshairElement.style.display = 'none';
+                keyDisplay.style.opacity = '0';
+                document.removeEventListener('mousemove', onMouseMove, false);
+                pauseTimer();
+                if (!isTransitioning && !stageCompletionFlag && resultsOverlay.style.display !== 'flex' && trainingChoiceOverlay.style.display !== 'flex') {
+                    menuOverlay.style.display = 'flex';
+                    updateLevelSelectMenu();
+                }
+            }
+        }
+
+        function onPointerlockError() { console.error('Pointer Lock Error.'); }
+        
+        function onMouseMove(event) {
+            if (document.pointerLockElement !== document.body) return;
+            const movementX = event.movementX || 0;
+            const movementY = event.movementY || 0;
+            if (Math.abs(movementX) > 500 || Math.abs(movementY) > 500) { return; }
+            euler.setFromQuaternion(camera.quaternion);
+            euler.y -= movementX * 0.002;
+            euler.x -= movementY * 0.002;
+            euler.x = Math.max(-PI_2, Math.min(PI_2, euler.x));
+            camera.quaternion.setFromEuler(euler);
+        }
+
+        function onMouseDown(event) {
+            // If the narration box is visible, the first click should only hide it.
+            if (narrationBox.style.display === 'block') {
+                narrationBox.style.display = 'none';
+                return; // Prioritize hiding narration box and do nothing else.
+            }
+
+            // If narration box is not visible, then check for training cancellation.
+            if (currentStage === 0 && wasdTrainingMode === 'special') {
+                wasdTrainingMode = 'free';
+                trainingCommandElement.style.display = 'none';
+                currentTrainingKey = null;
+                isWaitingForNextCommand = false;
+                // Show a confirmation message that training is cancelled.
+                showNarration('已取消移动特训。<br>Canceled special training.');
+                return; // Prevent shooting while canceling
+            }
+
+            // Default shooting action if no UI was interacted with.
+            if (document.pointerLockElement === document.body && currentStage === 0 && shootCooldown <= 0) {
+                handleShooting();
+            }
+        }
+
+        function loadStage(stageIndex) {
+            if (fireworksInterval) {
+                clearInterval(fireworksInterval);
+                fireworksInterval = null;
+            }
+            scene.background.set(0x87ceeb);
+            scene.fog = new THREE.Fog(0x87ceeb, 0, 150);
+
+            currentStage = stageIndex;
+            stageCompletionFlag = false; 
+            hasPlayerMoved = false;
+            canPlayerMove = true;
+            
+            if (toyGun) toyGun.visible = (stageIndex === 0);
+            
+            bullets.forEach(b => scene.remove(b));
+            bulletHoles.forEach(h => h.mesh.parent.remove(h.mesh));
+            firework3DParticles.forEach(p => scene.remove(p.mesh));
+            
+            const childrenToRemove = scene.children.filter(child => child !== camera);
+            childrenToRemove.forEach(child => scene.remove(child));
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            dirLight.position.set(-25, 35, 20);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            scene.add(dirLight);
+
+            stageObjects = []; collidables = []; animatedObjects = []; npcs = []; landmarks = [];
+            bullets = []; bulletHoles = []; firework3DParticles = [];
+            stage1Targets = []; aimedTargets.clear();
+            wasdTrainingKeys = []; 
+            wasdTrainingActivated = false;
+            wasdCenterButton = null;
+            wasdTrainingMode = null;
+            currentTrainingKey = null;
+            isWaitingForNextCommand = false;
+            narrationFlags = { wasd: false, skill: false, target: false };
+            npcCounterElement.style.display = 'none';
+            landmarkCounterElement.style.display = 'none';
+            scene.userData = {}; 
+            
+            const isMinimapVisible = (stageIndex === 3 || (stageIndex >= 6 && stageIndex <= 15));
+            minimapContainer.style.display = isMinimapVisible ? 'block' : 'none';
+            
+            playerVelocity.set(0, 0, 0);
+            isCrouching = false; 
+            playerOnFloor = true; 
+            
+            resultsOverlay.style.display = 'none';
+            trainingChoiceOverlay.style.display = 'none';
+            trainingCommandElement.style.display = 'none';
+
+            switch(currentStage) {
+                case 0: setupStage0_Warmup(); break;
+                case 1: setupStage1(); break;
+                case 2: setupStage2(); break;
+                case 3: setupStage3(); break;
+                case 4: setupStage4(); break;
+                case 5: setupStage5(); break;
+                case 6: setupStage6_Timed0(); break;
+                case 7: setupStage7_Timed1(); break;
+                case 8: setupStage8_Timed2(); break;
+                case 9: setupStage9_Timed3(); break;
+                case 10: setupStage10_Chase1(); break;
+                case 11: setupStage11_Chase2(); break;
+                case 12: setupStage12_Chase3(); break;
+                case 13: setupStage13_Landmark1(); break;
+                case 14: setupStage14_Landmark2(); break;
+                case 15: setupStage15_Landmark3(); break;
+                case 16: setupStage16_Final(); break;
+            }
+
+            if (currentStage !== 16) {
+                updateInstructions();
+                blockerElement.style.display = 'flex';
+                instructionElement.style.display = 'block';
+            }
+            
+            updatePlayerInfoUI();
+            stopTimer();
+            if (isTimedLevel(currentStage)) {
+                timerElement.style.display = 'block';
+                timerElement.textContent = "0.00s";
+            }
+        }
+        
+        function isTimedLevel(stage) { return stage > 0 && stage < 16; }
+
+        function getStarRating(stage, time) {
+            const thresholds = starTimeThresholds[stage];
+            if (!thresholds) return 1;
+            if (time < thresholds.s3) return 3;
+            if (time < thresholds.s2) return 2;
+            return 1;
+        }
+
+        function displayStars(starCount) {
+            let starsHTML = '';
+            for (let i = 0; i < 3; i++) {
+                starsHTML += `<span class="${i < starCount ? 'star-filled' : 'star-empty'}">★</span>`;
+            }
+            return starsHTML;
+        }
+
+        function updatePlayerInfoUI() {
+            if (!playerInfoElement) return;
+            if (gameMode === 'campaign' && currentStage > 0 && currentStage < 16) {
+                const playerNameElement = document.getElementById('player-name');
+                const playerStarsElement = document.getElementById('player-stars');
+                playerNameElement.textContent = playerProfile.title;
+                const currentStars = Object.values(levelStars).reduce((sum, stars) => sum + stars, 0);
+                const totalStars = Object.keys(starTimeThresholds).length * 3;
+                playerStarsElement.innerHTML = `星星 / Stars: ${currentStars} / ${totalStars} <span class="star-filled">★</span>`;
+                playerInfoElement.style.display = 'block';
+            } else {
+                playerInfoElement.style.display = 'none';
+            }
+        }
+
+        function updateInstructions() {
+            let text = "";
+            const enStyle = `font-size: 14px; color: #ccc;`;
+            const clickContinueStyle = `font-size: 16px; margin-top: 20px; text-align: center; color: #ffdd57;`;
+            const starContainer = document.getElementById('star-container');
+            const instructionTextElement = document.getElementById('instruction-text');
+            if (!instructionTextElement || !starContainer) return;
+            starContainer.innerHTML = ''; 
+
+            if (stageCompletionFlag) {
+                const elapsedTime = (clock.getElapsedTime() - levelStartTime);
+                let continueText;
+                if (gameMode === 'campaign') {
+                    const stars = levelStars[currentStage] || 1;
+                    starContainer.innerHTML = displayStars(stars);
+                    continueText = (currentStage < 15) ? "点击进入下一关 / Click for Next Level" : "点击查看最终成绩 / Click for Final Results";
+                    text = `太棒了, ${playerProfile.title}！<br>关卡完成！<br>用时: **${elapsedTime.toFixed(2)}** 秒<br><br><span style="${enStyle}">Great job, ${playerProfile.title}!<br>Level Complete!<br>Time: **${elapsedTime.toFixed(2)}** seconds</span><br><br><div style="${clickContinueStyle}">${continueText}</div>`;
+                } else { 
+                    recordTime(currentStage, elapsedTime);
+                    continueText = "点击返回菜单 / Click to Return to Menu";
+                    text = `关卡完成！<br>用时: **${elapsedTime.toFixed(2)}** 秒<br><br><span style="${enStyle}">Level Complete!<br>Time: **${elapsedTime.toFixed(2)}** seconds</span><br><br><div style="${clickContinueStyle}">${continueText}</div>`;
+                }
+            } else {
+                let greeting = gameMode === 'campaign' && playerProfile.title ? `你好, ${playerProfile.title}。<br><span style="${enStyle}">Hello, ${playerProfile.title}.</span><br>` : '';
+                switch(currentStage) {
+                    case 0: text = `这里是热身场地<br>请熟悉 **WASD** 移动，或穿过障碍并用准星瞄准靶子。<br>**点击鼠标左键**可以射击靶子。<br>熟悉操作后按 **ESC** 键打开菜单。<br><br><span style="${enStyle}">This is the warm-up area.<br>Practice with **WASD** or aim at the target.<br>**Left-click** to shoot.<br>Press **ESC** to open the menu.</span>`; break;
+                    case 1: text = `${greeting}请用准星瞄准所有 **红色** 圆球<br>已找到: ${aimedTargets.size} / 4<br><br><span style="${enStyle}">Aim at all **red** spheres.<br>Found: ${aimedTargets.size} / 4</span>`; break;
+                    case 2: text = `${greeting}做得好！<br>现在，请用 **W** 键向前走，穿过这条走廊，到达 **小红旗** 处。<br><br><span style="${enStyle}">Well done!<br>Now, use the **W** key to walk to the **red flag**.</span>`; break;
+                    case 3: text = `${greeting}太棒了！<br>现在试试用 **A, S, D, W** 键移动。请参考 **小地图** 的路线指引，找到 **小红旗**。<br><br><span style="${enStyle}">Great!<br>Now use **A, S, D, W** to move. Follow the route on the **minimap** to find the **red flag**.</span>`; break;
+                    case 4: text = `${greeting}非常好！<br>前方有一系列障碍。请按下 **空格键** 依次跳过去，抵达终点的**小红旗**。<br><br><span style="${enStyle}">Very good!<br>Press the **Spacebar** to jump over the obstacles to the **red flag**.</span>`; break;
+                    case 5: text = `${greeting}技巧挑战！<br>请综合运用**跳跃**和**蹲下(Shift)**穿过前方的障碍通道，抵达终点的**小红旗**。<br><br><span style="${enStyle}">Skill Challenge!<br>Use both **jumping** and **crouching (Shift)** to get to the **red flag**.</span>`; break;
+                    case 6: case 7: case 8: case 9: text = `${greeting}计时挑战 ${currentStage - 5}！<br>穿越这个迷宫，用最快的速度抵达终点！<br><br><span style="${enStyle}">Timed Challenge ${currentStage - 5}!<br>Get through this maze to the finish line as fast as you can!</span>`; break;
+                    case 10: case 11: case 12: text = `${greeting}追逐挑战 ${currentStage - 9}！<br>迷宫里出现了NPC！**在它们跑掉前捉住它们**！<br><br><span style="${enStyle}">Chase Challenge ${currentStage - 9}!<br>NPCs have appeared in the maze! **Catch them**!</span>`; break;
+                    case 13: case 14: case 15: text = `${greeting}地标寻路 ${currentStage - 12}！<br>请按顺序找到所有地标！<br>移动后小地图会消失，**长按E键**可暂停并查看地图。<br><br><span style="${enStyle}">Landmark Hunt ${currentStage - 12}!<br>Find all landmarks in order!<br>Minimap disappears on move. **Hold E** to pause and view map.</span>`; break;
+                    case 16: text = ``; break;
+                    default: text = `点击鼠标左键开始<br><span style="font-size:12px;">Left Click to Start</span>`; break;
+                }
+            }
+            instructionTextElement.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<span style="color: #ffdd57;">$1</span>');
+        }
+
+
+        function pauseTimer() { if (isTimerRunning) { isTimerRunning = false; timePausedAt = clock.getElapsedTime(); } }
+        function resumeTimer() { if (isTimedLevel(currentStage)) { if (!isTimerRunning) { if (levelStartTime === 0) { levelStartTime = clock.getElapsedTime(); } else { const pauseDuration = clock.getElapsedTime() - timePausedAt; levelStartTime += pauseDuration; } isTimerRunning = true; } } }
+        function stopTimer() { isTimerRunning = false; levelStartTime = 0; timePausedAt = 0; if (isTimedLevel(currentStage)) { timerElement.style.display = 'none'; } }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const deltaTime = clock.getDelta();
+            const totalTime = clock.getElapsedTime();
+
+            if (shootCooldown > 0) shootCooldown -= deltaTime;
+
+            animatedObjects.forEach(obj => {
+                if(obj.name === "welcome_text") { obj.position.y = 4 + Math.sin(totalTime * 1.5) * 0.2; obj.rotation.y = Math.sin(totalTime * 0.5) * 0.2; } 
+                else if (obj.name === "warmup_target") { obj.position.x = Math.sin(totalTime * 0.5) * 8; }
+                else if(obj.children.length > 10) { obj.position.y = 0.5 + Math.sin(totalTime * 1.5) * 0.1; obj.rotation.y += 0.1 * deltaTime; } 
+                else { obj.rotation.y += 0.8 * deltaTime; obj.rotation.x += 0.5 * deltaTime; }
+            });
+
+            updateBullets(deltaTime);
+            updateBulletHoles(deltaTime);
+            update3DFireworks(deltaTime);
+
+            if (isTimerRunning) { const elapsedTime = clock.getElapsedTime() - levelStartTime; timerElement.textContent = elapsedTime.toFixed(2) + 's'; }
+            
+            if (minimapContainer.style.display === 'block') drawMinimap(); 
+            
+            if (document.pointerLockElement === document.body) {
+                updatePlayer(deltaTime);
+                if (currentStage === 0) { 
+                    handleWarmupAiming(); 
+                    updateWasdTraining();
+                    handleWarmupNarration();
+                }
+                if (currentStage === 1) handleAiming();
+                if (currentStage >= 10 && currentStage <= 12 && npcs.length > 0) npcs.forEach(npc => updateNPC(npc, deltaTime));
+                checkStageCompletion();
+                updateKeyDisplay();
+            }
+
+            if (camera.position.y < -30 && !isTransitioning) {
+                isTransitioning = true;
+                if (document.pointerLockElement) document.exitPointerLock();
+                document.getElementById('instruction-text').innerHTML = `坠落...<br><span style="font-size:14px; color: #ccc;">Falling...</span>`;
+                blockerElement.style.display = 'flex';
+                instructionElement.style.display = 'block';
+                setTimeout(() => { loadStage(currentStage); }, 1000);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function checkStageCompletion() {
+            if (stageCompletionFlag || isTransitioning) return;
+            let shouldAdvance = false;
+            const playerPos = camera.position;
+            switch(currentStage) {
+                case 1: if (stage1Targets.length > 0 && aimedTargets.size === stage1Targets.length) shouldAdvance = true; break;
+                case 2: if (playerPos.z < -18) shouldAdvance = true; break;
+                case 3: 
+                    const target3 = scene.getObjectByName("finish_flag");
+                    if (target3 && playerPos.distanceTo(target3.position) < 3) shouldAdvance = true;
+                    break;
+                case 4: if (playerPos.z < -18) shouldAdvance = true; break;
+                case 5: if (playerPos.z < -23) shouldAdvance = true; break;
+                case 6: case 7: case 8: case 9:
+                    const endPos = scene.userData.endPos;
+                    if (endPos && playerPos.distanceTo(endPos) < 4) shouldAdvance = true;
+                    break;
+                case 10: case 11: case 12:
+                    const playerPos2D = new THREE.Vector2(playerPos.x, playerPos.z);
+                    for (let i = npcs.length - 1; i >= 0; i--) {
+                        const npc = npcs[i];
+                        if (playerPos2D.distanceTo(new THREE.Vector2(npc.position.x, npc.position.z)) < 2.5) {
+                            scene.remove(npc); npcs.splice(i, 1); updateNpcCounter();
+                        }
+                    }
+                    if (npcs.length === 0) shouldAdvance = true;
+                    break;
+                case 13: case 14: case 15:
+                    if (landmarks.length > 0 && nextLandmarkIndex < landmarks.length) {
+                        const nextLandmark = landmarks[nextLandmarkIndex];
+                        if (!nextLandmark.userData.isFound && playerPos.distanceTo(nextLandmark.position) < 3) {
+                            nextLandmark.material.color.setHex(0x00ff00);
+                            nextLandmark.material.emissive.setHex(0x008800);
+                            nextLandmark.userData.isFound = true;
+                            create3DFirework(nextLandmark.position);
+                            nextLandmarkIndex++;
+                            updateLandmarkCounter();
+                            if (nextLandmarkIndex === landmarks.length) shouldAdvance = true;
+                        }
+                    }
+                    break;
+            }
+
+            if (shouldAdvance) {
+                stageCompletionFlag = true;
+                pauseTimer();
+                const elapsedTime = (clock.getElapsedTime() - levelStartTime);
+                if (gameMode === 'campaign') {
+                    if (currentStage >= unlockedLevel) {
+                         unlockedLevel = Math.min(currentStage + 1, 16);
+                    }
+                    const newStars = getStarRating(currentStage, elapsedTime);
+                    if (!levelStars[currentStage] || newStars > levelStars[currentStage]) {
+                        levelStars[currentStage] = newStars;
+                    }
+                    recordTime(currentStage, elapsedTime); 
+                    saveProgress(); 
+                    updatePlayerInfoUI();
+                } else {
+                    recordTime(currentStage, elapsedTime);
+                    saveProgress();
+                }
+                updateInstructions();
+                blockerElement.style.display = 'flex';
+                if (document.pointerLockElement) { isTransitioning = true; document.exitPointerLock(); }
+            }
+        }
+
+        function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
+        function onKeyDown(event) {
+            keys[event.code] = true;
+            if (event.code === 'Escape') { if (document.pointerLockElement === document.body) document.exitPointerLock(); }
+            if (event.code === 'KeyE' && (currentStage >= 13 && currentStage <= 15)) {
+                canPlayerMove = false;
+                minimapContainer.style.display = 'block';
+            }
+        }
+        function onKeyUp(event) {
+            keys[event.code] = false;
+            if (event.code === 'KeyE' && (currentStage >= 13 && currentStage <= 15)) {
+                canPlayerMove = true;
+                if (hasPlayerMoved) minimapContainer.style.display = 'none';
+            }
+        }
+
+        // --- Helper Functions ---
+        function createWall(x, y, z, width, height, depth, color = 0xaaaaaa) { const g = new THREE.BoxGeometry(width, height, depth); const m = new THREE.MeshStandardMaterial({ color: color }); const w = new THREE.Mesh(g, m); w.position.set(x, y, z); w.receiveShadow = true; w.castShadow = true; scene.add(w); stageObjects.push(w); collidables.push(w); return w; }
+        function createFloor(width, depth) { const g = new THREE.PlaneGeometry(width, depth); const m = new THREE.MeshStandardMaterial({ color: 0x80c080, side: THREE.DoubleSide }); const f = new THREE.Mesh(g, m); f.rotation.x = -Math.PI / 2; f.receiveShadow = true; scene.add(f); stageObjects.push(f); }
+        function createFinishFlag(x, y, z) { const g = new THREE.Group(); const pg = new THREE.CylinderGeometry(0.1, 0.1, 4, 8); const pm = new THREE.MeshStandardMaterial({ color: 0x666666 }); const p = new THREE.Mesh(pg, pm); p.position.y = 2; g.add(p); const fg = new THREE.PlaneGeometry(1.5, 1); const fm = new THREE.MeshStandardMaterial({ color: 0xff0000, side: THREE.DoubleSide, emissive: 0x550000 }); const f = new THREE.Mesh(fg, fm); f.position.set(0.75, 3.5, 0); g.add(f); g.position.set(x, y, z); g.name = "finish_flag"; scene.add(g); stageObjects.push(g); return g; }
+        function createCapsule(r, h, c) { const g = new THREE.Group(); const m = new THREE.MeshStandardMaterial({ color: c }); const ch = h - (r * 2); const cg = new THREE.CylinderGeometry(r, r, ch, 32); const cyl = new THREE.Mesh(cg, m); cyl.castShadow = true; cyl.receiveShadow = true; g.add(cyl); const sg = new THREE.SphereGeometry(r, 32, 16); const ts = new THREE.Mesh(sg, m); ts.position.y = ch / 2; ts.castShadow = true; ts.receiveShadow = true; g.add(ts); const bs = new THREE.Mesh(sg, m); bs.position.y = -ch / 2; bs.castShadow = true; bs.receiveShadow = true; g.add(bs); g.velocity = new THREE.Vector3(); return g; }
+        function createCircularTarget() { const g = new THREE.Group(); g.name = "warmup_target"; const rings = [{ c: 0xffffff, r: 1.5 }, { c: 0xffffff, r: 1.3 }, { c: 0x000000, r: 1.1 }, { c: 0x000000, r: 0.9 }, { c: 0x87CEEB, r: 0.7 }, { c: 0x87CEEB, r: 0.5 }, { c: 0xFF4500, r: 0.4 }, { c: 0xFF4500, r: 0.3 }, { c: 0xFFD700, r: 0.2 }, { c: 0xFFD700, r: 0.1 }]; for (let i = 0; i < rings.length; i++) { const ring = rings[i]; let geo; if (i === rings.length - 1) { geo = new THREE.CircleGeometry(ring.r, 32); } else { geo = new THREE.RingGeometry(rings[i+1].r, ring.r, 32); } const mat = new THREE.MeshStandardMaterial({ color: ring.c, side: THREE.DoubleSide, emissive: 0x000000 }); const mesh = new THREE.Mesh(geo, mat); mesh.position.z = i * 0.001; mesh.userData = { isTargetRing: true }; g.add(mesh); stageObjects.push(mesh); collidables.push(mesh); } const sg = new THREE.BoxGeometry(0.1, 1.5, 0.1); const sm = new THREE.MeshStandardMaterial({ color: 0x8B4513 }); const s = new THREE.Mesh(sg, sm); s.position.y = -0.75; s.position.z = -0.1; g.add(s); g.position.set(0, 2, -12); scene.add(g); stageObjects.push(g); animatedObjects.push(g); collidables.push(g);}
+        function createLandmark(x, z, num) { const lg = new THREE.CylinderGeometry(1, 1, 0.5, 32); const lm = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xccaa00, transparent: true, opacity: 0.8 }); const l = new THREE.Mesh(lg, lm); l.position.set(x, 0.25, z); l.userData = { isLandmark: true, number: num, isFound: false }; scene.add(l); stageObjects.push(l); landmarks.push(l); const loader = new THREE.FontLoader(); loader.load('https://threejs.org/examples/fonts/helvetiker_bold.typeface.json', (font) => { const tg = new THREE.TextGeometry(num.toString(), { font: font, size: 0.8, height: 0.1 }); tg.computeBoundingBox(); const tm = new THREE.MeshBasicMaterial({ color: 0x000000 }); const t = new THREE.Mesh(tg, tm); t.position.x = -0.5 * (tg.boundingBox.max.x - tg.boundingBox.min.x); t.position.y = 0.3; t.rotation.x = -Math.PI / 2; l.add(t); }); return l; }
+        function createInstructionText(text, font, position, color = 0xffffff) { const textLines = text.split('\n'); const textGroup = new THREE.Group(); const textMat = new THREE.MeshBasicMaterial({ color: color }); textLines.forEach((line, index) => { const textGeo = new THREE.TextGeometry(line, { font: font, size: 0.3, height: 0.01 }); textGeo.computeBoundingBox(); const textMesh = new THREE.Mesh(textGeo, textMat); textMesh.position.x = -0.5 * (textGeo.boundingBox.max.x - textGeo.boundingBox.min.x); textMesh.position.y = -index * 0.4; textGroup.add(textMesh); }); textGroup.position.copy(position); textGroup.rotation.x = -Math.PI / 2; scene.add(textGroup); stageObjects.push(textGroup); return textGroup; }
+        function createPracticeAreaLayout(withObstacles = true) { createFloor(30, 30); createWall(0, 2.5, -15, 30, 5, 0.2); createWall(0, 2.5, 15, 30, 5, 0.2); createWall(-15, 2.5, 0, 0.2, 5, 30); createWall(15, 2.5, 0, 0.2, 5, 30); if (withObstacles) { const oW = 30, oH = 1.2, oD = 0.2; for (let i = 0; i < 5; i++) { createWall(0, oH / 2, -2 - (i * 2), oW, oH, oD, 0xcc5555); } } }
+        
+        function setupStage0_Warmup() { 
+            camera.position.set(0, playerHeight, 10); 
+            camera.quaternion.set(0, 0, 0, 1); 
+            euler.set(0, 0, 0, 'YXZ'); 
+            createPracticeAreaLayout(); 
+            createCircularTarget(); 
+            const loader = new THREE.FontLoader(); 
+            loader.load('https://threejs.org/examples/fonts/helvetiker_bold.typeface.json', function (font) { 
+                const textMaterial = new THREE.MeshStandardMaterial({ color: 0xFFE65A, metalness: 0.8, roughness: 0.4, emissive: 0xFFB300, emissiveIntensity: 0.4 }); 
+                const textGeo = new THREE.TextGeometry('Welcome', { font: font, size: 1.5, height: 0.3, curveSegments: 12, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.03, bevelOffset: 0, bevelSegments: 5 }); 
+                textGeo.computeBoundingBox(); 
+                const textMesh = new THREE.Mesh(textGeo, textMaterial); 
+                textMesh.position.set(-0.5 * (textGeo.boundingBox.max.x - textGeo.boundingBox.min.x), 4, 0);
+                textMesh.castShadow = true; 
+                textMesh.name = "welcome_text"; 
+                scene.add(textMesh); 
+                stageObjects.push(textMesh); 
+                animatedObjects.push(textMesh); 
+
+                createWasdTrainingArea(font);
+                
+                const skillGroup = new THREE.Group();
+                skillGroup.name = "skill_device";
+                const pinkColor = 0xff88cc;
+                const jumpObstacle = createWall(10, 0.5, 5, 2, 1, 2, 0xff8c00);
+                const jumpText = createInstructionText(' Jump\n(Space + W/A/S/D)', font, new THREE.Vector3(10, 0.01, 7), pinkColor);
+                
+                const crouchObstacleTop = createWall(10, 1.5, 0, 2.2, 0.2, 0.2, 0x708090);
+                const crouchObstacleLeft = createWall(8.9, 0.75, 0, 0.2, 1.5, 0.2, 0x708090);
+                const crouchObstacleRight = createWall(11.1, 0.75, 0, 0.2, 1.5, 0.2, 0x708090);
+                const crouchText = createInstructionText(' Crouch\n(Shift + W/A/S/D)', font, new THREE.Vector3(10, 0.01, 2), pinkColor);
+                
+                skillGroup.add(jumpObstacle, jumpText, crouchObstacleTop, crouchObstacleLeft, crouchObstacleRight, crouchText);
+                scene.add(skillGroup);
+                stageObjects.push(skillGroup);
+                collidables.push(jumpObstacle, crouchObstacleTop, crouchObstacleLeft, crouchObstacleRight);
+            }); 
+        }
+
+        function createWasdTrainingArea(font) {
+            const wasdGroup = new THREE.Group();
+            wasdGroup.name = "wasd_device";
+            const areaCenter = new THREE.Vector3(-10, 0.01, 5);
+            const keySize = 2;
+            const keySpacing = 2.5;
+            const inactiveMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.5, roughness: 0.8 });
+            const activeMat = new THREE.MeshStandardMaterial({ color: 0xFFFF00, emissive: 0xFFFF00, emissiveIntensity: 0.8 });
+            const textMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const centerGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.2, 32);
+            const centerInactiveMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x550000 });
+            const centerActiveMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.8 });
+            const centerButtonMesh = new THREE.Mesh(centerGeo, centerInactiveMat.clone());
+            centerButtonMesh.position.set(areaCenter.x, 0.1, areaCenter.z);
+            centerButtonMesh.castShadow = true;
+            wasdGroup.add(centerButtonMesh);
+            wasdCenterButton = {
+                mesh: centerButtonMesh,
+                boundingBox: new THREE.Box3().setFromObject(centerButtonMesh),
+                inactiveMaterial: centerInactiveMat,
+                activeMaterial: centerActiveMat
+            };
+            const createKey = (letter, position) => {
+                const keyGroup = new THREE.Group();
+                keyGroup.position.copy(position);
+                const planeGeo = new THREE.PlaneGeometry(keySize, keySize);
+                const plane = new THREE.Mesh(planeGeo, inactiveMat.clone());
+                plane.rotation.x = -Math.PI / 2;
+                plane.receiveShadow = true;
+                keyGroup.add(plane);
+                collidables.push(plane);
+                const textGeo = new THREE.TextGeometry(letter, { font: font, size: 1, height: 0.1 });
+                textGeo.computeBoundingBox();
+                const text = new THREE.Mesh(textGeo, textMat);
+                text.position.set(-0.5 * (textGeo.boundingBox.max.x - textGeo.boundingBox.min.x), 0.05, 0.5);
+                text.rotation.x = -Math.PI / 2;
+                keyGroup.add(text);
+                wasdGroup.add(keyGroup);
+                keyGroup.updateMatrixWorld(true);
+                wasdTrainingKeys.push({
+                    letter: letter,
+                    mesh: plane,
+                    boundingBox: new THREE.Box3().setFromObject(keyGroup),
+                    inactiveMaterial: plane.material,
+                    activeMaterial: activeMat
+                });
+            };
+            createKey('W', new THREE.Vector3(areaCenter.x, areaCenter.y, areaCenter.z - keySpacing));
+            createKey('A', new THREE.Vector3(areaCenter.x - keySpacing, areaCenter.y, areaCenter.z));
+            createKey('S', new THREE.Vector3(areaCenter.x, areaCenter.y, areaCenter.z + keySpacing));
+            createKey('D', new THREE.Vector3(areaCenter.x + keySpacing, areaCenter.y, areaCenter.z));
+            scene.add(wasdGroup);
+            stageObjects.push(wasdGroup);
+        }
+
+        function startNextTrainingCommand() {
+            const keys = ['W', 'A', 'S', 'D'];
+            currentTrainingKey = keys[Math.floor(Math.random() * keys.length)];
+            isWaitingForNextCommand = false;
+            let direction_zh, direction_en;
+            switch(currentTrainingKey) {
+                case 'W': direction_zh = '前'; direction_en = 'Forward'; break;
+                case 'A': direction_zh = '左'; direction_en = 'Left'; break;
+                case 'S': direction_zh = '后'; direction_en = 'Backward'; break;
+                case 'D': direction_zh = '右'; direction_en = 'Right'; break;
+            }
+            trainingCommandElement.innerHTML = `请移动到：${direction_zh} (${currentTrainingKey})<br><span style="font-size:16px; color: #ccc;">Please move to: ${direction_en} (${currentTrainingKey})</span><br><br><span style="font-size:12px; color: #aaa;">(点击鼠标左键可随时取消 / Left-click to cancel anytime)</span>`;
+            trainingCommandElement.style.display = 'block';
+        }
+
+        function updateWasdTraining() {
+            if (!wasdCenterButton) return;
+            const playerPos = camera.position;
+
+            if (!wasdTrainingActivated) {
+                const box = wasdCenterButton.boundingBox;
+                if (playerPos.x >= box.min.x && playerPos.x <= box.max.x &&
+                    playerPos.z >= box.min.z && playerPos.z <= box.max.z) {
+                    wasdTrainingActivated = true;
+                    wasdCenterButton.mesh.material = wasdCenterButton.activeMaterial;
+                    create3DFirework(wasdCenterButton.mesh.position);
+                    if (document.pointerLockElement) document.exitPointerLock();
+                    trainingChoiceOverlay.style.display = 'flex';
+                }
+                return;
+            }
+
+            if (!wasdTrainingMode) return;
+
+            if (wasdTrainingMode === 'special') {
+                if (!isWaitingForNextCommand) {
+                    const correctKey = wasdTrainingKeys.find(k => k.letter === currentTrainingKey);
+                    if (correctKey) {
+                        const box = correctKey.boundingBox;
+                        const isPlayerOnCorrectKey = playerPos.x >= box.min.x && playerPos.x <= box.max.x &&
+                                                     playerPos.z >= box.min.z && playerPos.z <= box.max.z;
+                        if (isPlayerOnCorrectKey) {
+                            isWaitingForNextCommand = true;
+                            trainingCommandElement.innerHTML = `太棒了！请返回中心红色按钮<br><span style="font-size:16px; color: #ccc;">Great! Please return to the red button</span><br><br><span style="font-size:12px; color: #aaa;">(点击鼠标左键可随时取消 / Left-click to cancel anytime)</span>`;
+                        }
+                    }
+                } 
+                else {
+                    const box = wasdCenterButton.boundingBox;
+                    const isPlayerOnCenter = playerPos.x >= box.min.x && playerPos.x <= box.max.x &&
+                                             playerPos.z >= box.min.z && playerPos.z <= box.max.z;
+                    if (isPlayerOnCenter) {
+                        startNextTrainingCommand();
+                    }
+                }
+            }
+
+            wasdTrainingKeys.forEach(key => {
+                const box = key.boundingBox;
+                const isPlayerOnKey = playerPos.x >= box.min.x && playerPos.x <= box.max.x &&
+                                      playerPos.z >= box.min.z && playerPos.z <= box.max.z;
+                
+                let shouldBeLit = false;
+                if (isPlayerOnKey) {
+                    if (wasdTrainingMode === 'free') {
+                        shouldBeLit = true;
+                    } else if (wasdTrainingMode === 'special') {
+                        if (key.letter === currentTrainingKey) {
+                            shouldBeLit = true;
+                        }
+                    }
+                }
+                key.mesh.material = shouldBeLit ? key.activeMaterial : key.inactiveMaterial;
+            });
+            
+            if (wasdTrainingMode === 'special' && isWaitingForNextCommand) {
+                 wasdCenterButton.mesh.material = wasdCenterButton.activeMaterial;
+            } else {
+                 wasdCenterButton.mesh.material = wasdCenterButton.inactiveMaterial;
+            }
+        }
+
+        function setupStage1() { camera.position.set(0, playerHeight, 5); camera.quaternion.set(0, 0, 0, 1); euler.set(0, 0, 0, 'YXZ'); createFloor(20, 20); createWall(0, 2.5, -10, 20, 5, 0.2); createWall(0, 2.5, 10, 20, 5, 0.2); createWall(-10, 2.5, 0, 0.2, 5, 20); createWall(10, 2.5, 0, 0.2, 5, 20); const targetPositions = [new THREE.Vector3(0, 1.5, -8), new THREE.Vector3(8, 2, 0), new THREE.Vector3(-7, 1, 3), new THREE.Vector3(0, 3, 8)]; targetPositions.forEach(pos => { const targetGeo = new THREE.SphereGeometry(0.5, 32, 32); const targetMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x550000 }); const target = new THREE.Mesh(targetGeo, targetMat); target.position.copy(pos); target.userData.isTarget = true; scene.add(target); stageObjects.push(target); stage1Targets.push(target); }); updateInstructions(); }
+        function setupStage2() { camera.position.set(0, playerHeight, 18); camera.quaternion.set(0, 0, 0, 1); euler.set(0, 0, 0, 'YXZ'); createFloor(10, 40); createWall(-5, 2.5, 0, 0.2, 5, 40); createWall(5, 2.5, 0, 0.2, 5, 40); createWall(0, 2.5, 20, 10, 5, 0.2); createWall(0, 2.5, -20, 10, 5, 0.2); createFinishFlag(0, 0, -19); }
+        function setupStage3() {
+            camera.position.set(0, playerHeight, 18);
+            camera.quaternion.set(0, 0, 0, 1);
+            euler.set(0, 0, 0, 'YXZ');
+            createFloor(40, 40);
+            createWall(0, 2.5, 20, 40, 5, 0.2);
+            createWall(0, 2.5, -20, 40, 5, 0.2);
+            createWall(20, 2.5, 0, 0.2, 5, 40);
+            createWall(-20, 2.5, 0, 0.2, 5, 40);
+            createWall(0, 2.5, 10, 30, 5, 0.2);
+            createWall(10, 2.5, 0, 20, 5, 0.2);
+            createWall(-15, 2.5, 5, 0.2, 5, 10);
+            createWall(0, 2.5, -10, 30, 5, 0.2);
+            createWall(-5, 2.5, -5, 0.2, 5, 10);
+            
+            const finishFlag = createFinishFlag(12, 0, -18);
+            
+            scene.userData.mazeCols = 40;
+            scene.userData.mazeRows = 40;
+            scene.userData.cellSize = 1;
+            scene.userData.endPos = finishFlag.position.clone();
+            scene.userData.startPos = camera.position.clone();
+            scene.userData.routePath = [
+                new THREE.Vector3(0, 0, 18), new THREE.Vector3(0, 0, 12),
+                new THREE.Vector3(-15, 0, 12), new THREE.Vector3(-15, 0, -15),
+                new THREE.Vector3(12, 0, -15), new THREE.Vector3(12, 0, -18)
+            ];
+            scene.userData.walls = [
+                {x: 0, z: 10, w: 30, d: 0.2}, {x: 10, z: 0, w: 20, d: 0.2},
+                {x: -15, z: 5, w: 0.2, d: 10}, {x: 0, z: -10, w: 30, d: 0.2},
+                {x: -5, z: -5, w: 0.2, d: 10}
+            ];
+        }
+        function setupStage4() { camera.position.set(0, playerHeight, 18); camera.quaternion.set(0, 0, 0, 1); euler.set(0, 0, 0, 'YXZ'); const pathWidth = 4; createFloor(pathWidth, 40); createWall(-pathWidth/2, 2.5, 0, 0.2, 5, 40); createWall(pathWidth/2, 2.5, 0, 0.2, 5, 40); createWall(0, 2.5, 20, pathWidth, 5, 0.2); const obstacleHeight = 1.5; const obstacleY = obstacleHeight / 2; createWall(0, obstacleY, 12, pathWidth, obstacleHeight, 2, 0xff8c00); createWall(0, obstacleY, 6, pathWidth, obstacleHeight, 2, 0xff8c00); createWall(0, obstacleY, 0, pathWidth, obstacleHeight, 2, 0xff8c00); createWall(0, obstacleY, -6, pathWidth, obstacleHeight, 2, 0xff8c00); createWall(0, obstacleY, -12, pathWidth, obstacleHeight, 2, 0xff8c00); createFinishFlag(0, 0, -19); }
+        function setupStage5() { camera.position.set(0, playerHeight, 23); camera.quaternion.set(0, 0, 0, 1); euler.set(0, 0, 0, 'YXZ'); const pathWidth = 4; const pathLength = 50; createFloor(pathWidth, pathLength); createWall(-pathWidth/2, 2.5, 0, 0.2, 5, pathLength); createWall(pathWidth/2, 2.5, 0, 0.2, 5, pathLength); createWall(0, 2.5, pathLength/2, pathWidth, 5, 0.2); const jumpHeight = 1.5; const jumpY = jumpHeight / 2; const crouchBarrierHeight = 1.5; const crouchBarrierY = 2.25; createWall(0, jumpY, 20, pathWidth, jumpHeight, 0.5, 0xff8c00); createWall(0, crouchBarrierY, 15, pathWidth, crouchBarrierHeight, 0.5, 0x708090); createWall(0, jumpY, 10, pathWidth, jumpHeight, 0.5, 0xff8c00); createWall(0, jumpY, 5, pathWidth, jumpHeight, 0.5, 0xff8c00); createWall(0, crouchBarrierY, 0, pathWidth, crouchBarrierHeight, 0.5, 0x708090); createWall(0, crouchBarrierY, -5, pathWidth, crouchBarrierHeight, 0.5, 0x708090); createWall(0, jumpY, -10, pathWidth, jumpHeight, 0.5, 0xff8c00); createWall(0, crouchBarrierY, -15, pathWidth, crouchBarrierHeight, 0.5, 0x708090); createFinishFlag(0, 0, -24); }
+        
+        function setupTimedMazeLevel(mazeLayout) {
+            const cellSize = 5;
+            const wallHeight = 4;
+            const wallY = wallHeight / 2;
+            const mazeRows = mazeLayout.length;
+            const mazeCols = mazeLayout[0].length;
+            const mapWidth = mazeCols * cellSize;
+            const mapLength = mazeRows * cellSize;
+            let startPos = new THREE.Vector3();
+            let endPos = new THREE.Vector3();
+            const offsetX = -mapWidth / 2;
+            const offsetZ = -mapLength / 2;
+            createFloor(mapWidth, mapLength);
+            for (let i = 0; i < mazeRows; i++) {
+                for (let j = 0; j < mazeCols; j++) {
+                    const x = j * cellSize + offsetX + cellSize / 2;
+                    const z = i * cellSize + offsetZ + cellSize / 2;
+                    const cell = mazeLayout[i][j];
+                    switch (cell) {
+                        case 1: createWall(x, wallY, z, cellSize, wallHeight, cellSize, 0x556B2F); break;
+                        case 'S': startPos.set(x, playerHeight, z); break;
+                        case 'E': endPos.set(x, 0, z); createFinishFlag(x, 0, z); break;
+                        case 'J': createWall(x, 0.75, z, cellSize, 1.5, cellSize, 0xff8c00); break;
+                        case 'C': createWall(x, 2.25, z, cellSize, 1.5, cellSize, 0x708090); break;
+                    }
+                }
+            }
+            camera.position.copy(startPos);
+            camera.quaternion.set(0, 0, 0, 1);
+            euler.set(0, Math.PI, 0, 'YXZ');
+            camera.quaternion.setFromEuler(euler);
+            scene.userData.mazeLayout = mazeLayout;
+            scene.userData.mazeRows = mazeRows;
+            scene.userData.mazeCols = mazeCols;
+            scene.userData.cellSize = cellSize;
+            scene.userData.endPos = endPos;
+        }
+        
+        function setupChaseMazeLevel(mazeLayout, npcCount) {
+            const cellSize = 6;
+            const wallHeight = 5;
+            const wallY = wallHeight / 2;
+            const mazeRows = mazeLayout.length;
+            const mazeCols = mazeLayout[0].length;
+            const mapWidth = mazeCols * cellSize;
+            const mapLength = mazeRows * cellSize;
+            let startPos = new THREE.Vector3();
+            const offsetX = -mapWidth / 2;
+            const offsetZ = -mapLength / 2;
+            createFloor(mapWidth, mapLength);
+            for (let i = 0; i < mazeRows; i++) {
+                for (let j = 0; j < mazeCols; j++) {
+                    const x = j * cellSize + offsetX + cellSize / 2;
+                    const z = i * cellSize + offsetZ + cellSize / 2;
+                    const cell = mazeLayout[i][j];
+                    switch (cell) {
+                        case 1: createWall(x, wallY, z, cellSize, wallHeight, cellSize, 0x333344); break;
+                        case 'S': startPos.set(x, playerHeight, z); break;
+                        case 'N': const npc = createCapsule(0.4, 1.8, 0x0099ff); npc.position.set(x, 0.9, z); scene.add(npc); npcs.push(npc); stageObjects.push(npc); break;
+                        case 'J': createWall(x, 0.75, z, cellSize, 1.5, cellSize, 0xff8c00); break;
+                        case 'C': createWall(x, 2.25, z, cellSize, 1.5, cellSize, 0x708090); break;
+                    }
+                }
+            }
+            camera.position.copy(startPos);
+            camera.quaternion.set(0, 0, 0, 1);
+            euler.set(0, Math.PI, 0, 'YXZ');
+            camera.quaternion.setFromEuler(euler);
+            scene.userData.mazeLayout = mazeLayout;
+            scene.userData.mazeRows = mazeRows;
+            scene.userData.mazeCols = mazeCols;
+            scene.userData.cellSize = cellSize;
+            scene.userData.totalNpcs = npcCount;
+            updateNpcCounter();
+            npcCounterElement.style.display = 'block';
+        }
+        
+        function setupLandmarkMazeLevel(mazeLayout) {
+            const cellSize = 8;
+            const wallHeight = 5;
+            const wallY = wallHeight / 2;
+            const mazeRows = mazeLayout.length;
+            const mazeCols = mazeLayout[0].length;
+            const mapWidth = mazeCols * cellSize;
+            const mapLength = mazeRows * cellSize;
+            let startPos = new THREE.Vector3();
+            const offsetX = -mapWidth / 2;
+            const offsetZ = -mapLength / 2;
+            createFloor(mapWidth, mapLength);
+            let landmarkCounter = 1;
+            for (let i = 0; i < mazeRows; i++) {
+                for (let j = 0; j < mazeCols; j++) {
+                    const x = j * cellSize + offsetX + cellSize / 2;
+                    const z = i * cellSize + offsetZ + cellSize / 2;
+                    const cell = mazeLayout[i][j];
+                     switch (cell) {
+                        case 1: createWall(x, wallY, z, cellSize, wallHeight, cellSize, 0x4B0082); break;
+                        case 'S': startPos.set(x, playerHeight, z); break;
+                        case 'L': createLandmark(x, z, landmarkCounter++); break;
+                        case 'J': createWall(x, 0.75, z, cellSize, 1.5, cellSize, 0xff8c00); break;
+                        case 'C': createWall(x, 2.25, z, cellSize, 1.5, cellSize, 0x708090); break;
+                    }
+                }
+            }
+            camera.position.copy(startPos);
+            camera.quaternion.set(0, 0, 0, 1);
+            euler.set(0, Math.PI, 0, 'YXZ');
+            camera.quaternion.setFromEuler(euler);
+            scene.userData.mazeLayout = mazeLayout;
+            scene.userData.mazeRows = mazeRows;
+            scene.userData.mazeCols = mazeCols;
+            scene.userData.cellSize = cellSize;
+            nextLandmarkIndex = 0;
+            landmarkCounterElement.style.display = 'block';
+            updateLandmarkCounter();
+        }
+        
+        function setupStage6_Timed0() { const layout = [['S', 0, 1, 0, 0], [1, 0, 1, 0, 1], [0, 0, 0, 0, 0], [0, 1, 1, 1, 0], [0, 0, 0, 0, 'E']]; setupTimedMazeLevel(layout); }
+        function setupStage7_Timed1() { const layout = [['S', 0, 0, 0, 1, 0, 0, 0], [1, 1, 1, 0, 1, 0, 1, 0], [0, 0, 0, 0, 1, 'J', 1, 0], [0, 1, 1, 1, 1, 0, 0, 0], [0, 0, 0, 0, 0, 0, 1, 0], [1, 1, 1, 0, 1, 1, 1, 0], [0, 0, 0, 0, 1, 0, 0, 0], [1, 1, 1, 1, 1, 0, 1, 'E']]; setupTimedMazeLevel(layout); }
+        function setupStage8_Timed2() { const layout = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 'S', 0, 1, 0, 0, 'J', 0, 0, 0, 0, 0, 1], [1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1], [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 'C', 0, 1], [1, 1, 1, 0, 1, 1, 'C', 1, 0, 1, 1, 0, 1], [1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], [1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1], [1, 'J', 0, 0, 0, 0, 0, 1, 0, 0, 0, 'J', 1], [1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1], [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1], [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1], [1, 0, 0, 'C', 0, 0, 0, 0, 0, 0, 0, 'E', 1], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],]; setupTimedMazeLevel(layout); }
+        function setupStage9_Timed3() { const layout = [['S', 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 'J', 0], [1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0], [0, 0, 0, 0, 1, 'C', 1, 0, 0, 0, 1, 0, 0], [0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], [1, 1, 1, 'J', 1, 1, 0, 1, 1, 1, 1, 0, 1], [0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0], [1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0], [0, 'C', 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0], [0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 'J', 1, 0], [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0], [1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1], [0, 0, 0, 0, 'C', 0, 0, 0, 0, 0, 0, 0, 'E'],]; setupTimedMazeLevel(layout); }
+        function setupStage10_Chase1() { const layout = [[1, 1, 1, 1, 1, 1, 1], [1, 'S', 0, 1, 0, 'N', 1], [1, 0, 0, 0, 0, 0, 1], [1, 'N', 1, 0, 1, 0, 1], [1, 1, 1, 1, 1, 1, 1]]; setupChaseMazeLevel(layout, 2); }
+        function setupStage11_Chase2() { const layout = [[1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 'S', 0, 0, 1, 'J', 1, 'N', 1], [1, 1, 0, 1, 1, 0, 1, 0, 1], [1, 0, 0, 'N', 0, 0, 'C', 0, 1], [1, 0, 1, 1, 1, 1, 1, 0, 1], [1, 'N', 0, 0, 0, 0, 0, 0, 1], [1, 1, 1, 1, 1, 1, 1, 1, 1]]; setupChaseMazeLevel(layout, 3); }
+        function setupStage12_Chase3() { const layout = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 'S', 0, 0, 0, 'J', 0, 1, 'N', 1], [1, 1, 1, 0, 1, 1, 0, 1, 0, 1], [1, 'N', 0, 0, 0, 1, 'C', 0, 0, 1], [1, 1, 1, 1, 0, 1, 1, 1, 1, 1], [1, 0, 0, 1, 'N', 0, 0, 'N', 0, 1], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]; setupChaseMazeLevel(layout, 4); }
+        function setupStage13_Landmark1() { const layout = [[1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 'S', 0, 0, 1, 'C', 0, 'L', 1], [1, 1, 1, 0, 1, 0, 1, 1, 1], [1, 0, 'J', 0, 0, 0, 0, 0, 1], [1, 0, 1, 1, 1, 1, 1, 0, 1], [1, 0, 0, 0, 0, 0, 1, 0, 1], [1, 1, 'L', 1, 1, 'J', 1, 0, 1], [1, 'C', 0, 0, 0, 0, 0, 0, 1], [1, 1, 1, 1, 1, 1, 1, 1, 1]]; setupLandmarkMazeLevel(layout); }
+        function setupStage14_Landmark2() { const layout = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 'S', 0, 0, 0, 1, 'L', 0, 'J', 0, 1], [1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1], [1, 0, 0, 'C', 0, 0, 0, 1, 0, 1, 1], [1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1], [1, 0, 1, 0, 0, 0, 0, 1, 1, 'L', 1], [1, 'L', 1, 0, 1, 1, 0, 0, 'C', 0, 1], [1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 1], [1, 0, 'J', 0, 1, 0, 1, 0, 0, 0, 1], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]; setupLandmarkMazeLevel(layout); }
+        function setupStage15_Landmark3() { const layout = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 'S', 0, 1, 0, 0, 0, 1, 'J', 0, 0, 'L', 1], [1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1], [1, 0, 0, 'L', 0, 1, 'C', 0, 0, 1, 0, 0, 1], [1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1], [1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], [1, 0, 1, 1, 1, 1, 'L', 1, 1, 1, 1, 0, 1], [1, 0, 1, 'J', 0, 0, 0, 0, 0, 0, 1, 0, 1], [1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 'L', 1], [1, 0, 0, 0, 'C', 0, 0, 0, 0, 0, 0, 0, 1], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]; setupLandmarkMazeLevel(layout); }
+        
+        function setupStage16_Final() {
+            camera.position.set(0, playerHeight, 8);
+            camera.lookAt(0, playerHeight, 0);
+            euler.setFromQuaternion(camera.quaternion, 'YXZ');
+            createFloor(30, 30);
+            scene.background.set(0x141428);
+            scene.fog = new THREE.Fog(0x141428, 20, 100);
+            if (fireworksInterval) clearInterval(fireworksInterval);
+            fireworksInterval = setInterval(() => {
+                const x = (Math.random() - 0.5) * 40;
+                const z = (Math.random() - 0.5) * 40 - 10;
+                create3DFirework(new THREE.Vector3(x, 0, z));
+            }, 1000);
+            const totalStarsEarned = Object.values(levelStars).reduce((sum, stars) => sum + stars, 0);
+            const maxStars = Object.keys(starTimeThresholds).length * 3;
+            let rank, rankColor, encouragementMessage;
+            if (totalStarsEarned >= maxStars * (2/3)) {
+                rank = '冠军<br><span class="podium-rank-en">Champion</span>';
+                rankColor = '#ffd700';
+                encouragementMessage = `太厉害了！您以绝对的优势完成了所有挑战，您就是我们的操作冠军！<br><span class="en">Amazing! You've completed all challenges with a clear advantage to become our champion!</span>`;
+            } else if (totalStarsEarned >= maxStars * (1/3)) {
+                rank = '亚军<br><span class="podium-rank-en">Runner-up</span>';
+                rankColor = '#c0c0c0';
+                encouragementMessage = `非常出色！您掌握了大部分操作技巧，获得了亚军的荣誉！<br><span class="en">Excellent work! You've mastered most skills to earn the runner-up honor!</span>`;
+            } else {
+                rank = '季军<br><span class="podium-rank-en">Bronze</span>';
+                rankColor = '#cd7f32';
+                encouragementMessage = `恭喜您完成了所有训练，并登上了季军的领奖台！每一步都是了不起的成就！<br><span class="en">Congratulations on completing all the training and reaching the podium! Every step is a great achievement!</span>`;
+            }
+            document.getElementById('player-final-title').innerHTML = `祝贺您, ${playerProfile.title}!<br><span style="font-size:16px; color: #ccc;">Congratulations, ${playerProfile.title}!</span>`;
+            document.getElementById('encouragement-message').innerHTML = encouragementMessage;
+            const podium1 = document.getElementById('podium-1');
+            const podium2 = document.getElementById('podium-2');
+            const podium3 = document.getElementById('podium-3');
+            podium1.innerHTML = `<div class="podium-rank">1</div>`;
+            podium2.innerHTML = `<div class="podium-rank">2</div>`;
+            podium3.innerHTML = `<div class="podium-rank">3</div>`;
+            const playerPodiumHTML = `<div class="podium-rank" style="color:${rankColor};">${rank}</div><div class="podium-stars">${totalStarsEarned} ★</div>`;
+            if (rank.includes('Champion')) {
+                podium1.innerHTML = playerPodiumHTML;
+            } else if (rank.includes('Runner-up')) {
+                podium2.innerHTML = playerPodiumHTML;
+            } else {
+                podium3.innerHTML = playerPodiumHTML;
+            }
+            resultsOverlay.style.display = 'flex';
+            blockerElement.style.display = 'none';
+            if (document.pointerLockElement) document.exitPointerLock();
+        }
+        
+        // --- Shooting System Functions ---
+        function createToyGun() {
+            toyGun = new THREE.Group();
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4a90e2, roughness: 0.4, metalness: 0.1 });
+            const bodyGeo = new THREE.BoxGeometry(0.25, 0.25, 0.6);
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.set(0, -0.1, -0.25);
+            toyGun.add(body);
+            const handleGeo = new THREE.CylinderGeometry(0.1, 0.12, 0.4, 16);
+            const handle = new THREE.Mesh(handleGeo, bodyMat);
+            handle.position.set(0, -0.4, -0.15);
+            handle.rotation.x = -0.3;
+            toyGun.add(handle);
+            const barrelMat = new THREE.MeshStandardMaterial({ color: 0xf5a623, roughness: 0.2, metalness: 0.5 });
+            const barrelGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.5, 16);
+            const barrel = new THREE.Mesh(barrelGeo, barrelMat);
+            barrel.position.set(0, -0.05, -0.7);
+            barrel.rotation.x = Math.PI / 2;
+            toyGun.add(barrel);
+            const sightMat = new THREE.MeshStandardMaterial({ color: 0x9b9b9b });
+            const sightGeo = new THREE.BoxGeometry(0.05, 0.05, 0.15);
+            const sight = new THREE.Mesh(sightGeo, sightMat);
+            sight.position.set(0, 0.05, -0.4);
+            toyGun.add(sight);
+            toyGun.position.set(0.5, -0.5, -1.0);
+            toyGun.rotation.y = -0.15;
+        }
+
+        function handleShooting() {
+            shootCooldown = 0.2;
+            const bulletGeo = new THREE.SphereGeometry(0.05, 16, 8);
+            const bulletMat = new THREE.MeshStandardMaterial({ color: 0xffa500, emissive: 0xffa500, emissiveIntensity: 2 });
+            const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+            const muzzlePosition = new THREE.Vector3();
+            const muzzle = toyGun.children[2];
+            muzzle.getWorldPosition(muzzlePosition);
+            raycaster.setFromCamera(centerScreen, camera);
+            const intersects = raycaster.intersectObjects(collidables, true);
+            let targetPosition;
+            if (intersects.length > 0) {
+                targetPosition = intersects[0].point;
+            } else {
+                targetPosition = new THREE.Vector3();
+                camera.getWorldDirection(targetPosition);
+                targetPosition.multiplyScalar(1000).add(camera.position);
+            }
+            const bulletVelocity = new THREE.Vector3().subVectors(targetPosition, muzzlePosition).normalize();
+            bullet.position.copy(muzzlePosition);
+            bullet.velocity = bulletVelocity.multiplyScalar(100);
+            bullet.life = 5;
+            bullets.push(bullet);
+            scene.add(bullet);
+        }
+
+        function updateBullets(deltaTime) {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                bullet.life -= deltaTime;
+                const bulletMoveVector = bullet.velocity.clone().multiplyScalar(deltaTime);
+                const bulletRaycaster = new THREE.Raycaster(bullet.position, bullet.velocity.clone().normalize());
+                const intersects = bulletRaycaster.intersectObjects(collidables, true);
+                let collision = false;
+                if (intersects.length > 0 && intersects[0].distance < bulletMoveVector.length()) {
+                    const intersect = intersects[0];
+                    bullet.position.copy(intersect.point);
+                    if (intersect.object.userData.isTargetRing) createBulletHole(intersect);
+                    collision = true;
+                }
+                if (collision || bullet.life <= 0) {
+                    scene.remove(bullet);
+                    bullet.geometry.dispose();
+                    bullet.material.dispose();
+                    bullets.splice(i, 1);
+                    continue;
+                }
+                bullet.position.add(bulletMoveVector);
+            }
+        }
+        
+        function createBulletHole(intersect) {
+            const heartShape = new THREE.Shape();
+            const s = 0.05;
+            heartShape.moveTo(0, -1.5 * s);
+            heartShape.bezierCurveTo(-3 * s, 1.5 * s, -1 * s, 3 * s, 0, 2 * s);
+            heartShape.bezierCurveTo(1 * s, 3 * s, 3 * s, 1.5 * s, 0, -1.5 * s);
+            const holeGeo = new THREE.ShapeGeometry(heartShape);
+            const holeMat = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 1, side: THREE.DoubleSide });
+            const holeMesh = new THREE.Mesh(holeGeo, holeMat);
+            let targetParent = intersect.object;
+            while(targetParent.parent && targetParent.name !== 'warmup_target') targetParent = targetParent.parent;
+            const hole = { mesh: holeMesh, life: 3.0 };
+            if (targetParent && targetParent.name === 'warmup_target') {
+                const localPoint = targetParent.worldToLocal(intersect.point.clone());
+                holeMesh.position.copy(localPoint);
+                holeMesh.position.addScaledVector(intersect.face.normal, 0.02); 
+                holeMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), intersect.face.normal);
+                holeMesh.rotation.z = Math.PI;
+                targetParent.add(holeMesh);
+            } else {
+                holeMesh.position.copy(intersect.point);
+                holeMesh.lookAt(intersect.point.clone().add(intersect.face.normal));
+                holeMesh.position.addScaledVector(intersect.face.normal, 0.01);
+                scene.add(holeMesh);
+            }
+            bulletHoles.push(hole);
+        }
+
+        function updateBulletHoles(deltaTime) {
+            for (let i = bulletHoles.length - 1; i >= 0; i--) {
+                const hole = bulletHoles[i];
+                hole.life -= deltaTime;
+                if (hole.life <= 0) {
+                    hole.mesh.parent.remove(hole.mesh);
+                    hole.mesh.geometry.dispose();
+                    hole.mesh.material.dispose();
+                    bulletHoles.splice(i, 1);
+                } else if (hole.life <= 1.0) {
+                    hole.mesh.material.opacity = hole.life;
+                }
+            }
+        }
+
+
+        function handleWarmupAiming() { raycaster.setFromCamera(centerScreen, camera); const intersects = raycaster.intersectObjects(stageObjects, true); let currentHit = null; for (const intersect of intersects) { if (intersect.object.userData.isTargetRing) { currentHit = intersect.object; break; } } if (highlightedRing && highlightedRing !== currentHit) { highlightedRing.material.emissive.setHex(0x000000); highlightedRing = null; } if (currentHit && currentHit !== highlightedRing) { highlightedRing = currentHit; highlightedRing.material.emissive.setHex(0x666666); } }
+        function handleAiming() { raycaster.setFromCamera(centerScreen, camera); const intersects = raycaster.intersectObjects(stage1Targets); if (intersects.length > 0) { const aimedObject = intersects[0].object; if (aimedObject.userData.isTarget && !aimedTargets.has(aimedObject)) { aimedObject.material.emissive.setHex(0x00ff00); aimedTargets.add(aimedObject); updateInstructions(); } } }
+        function updatePlayer(deltaTime) { const moveDirection = new THREE.Vector3(); if (keys['KeyW']) moveDirection.z = -1; if (keys['KeyS']) moveDirection.z = 1; if (keys['KeyA']) moveDirection.x = -1; if (keys['KeyD']) moveDirection.x = 1; if (!hasPlayerMoved && moveDirection.lengthSq() > 0) { hasPlayerMoved = true; if (currentStage >= 13 && currentStage <= 15) { minimapContainer.style.display = 'none'; } } if (!canPlayerMove) return; const wantsToCrouch = (keys['ShiftLeft'] || keys['ShiftRight']); if (wantsToCrouch) { if (!isCrouching && playerOnFloor) { camera.position.y -= (playerHeight - playerCrouchHeight); } isCrouching = true; } else { if (isCrouching) { const upRaycaster = new THREE.Raycaster(camera.position, new THREE.Vector3(0, 1, 0), 0, playerHeight - playerCrouchHeight + 0.1); const ceilingIntersections = upRaycaster.intersectObjects(collidables); if (ceilingIntersections.length === 0) { camera.position.y += (playerHeight - playerCrouchHeight); isCrouching = false; } } } const speed = (isCrouching ? crouchSpeed : moveSpeed); if (moveDirection.lengthSq() > 0) { moveDirection.normalize(); const worldMoveDirection = moveDirection.clone().applyQuaternion(camera.quaternion); camera.position.x += worldMoveDirection.x * speed * deltaTime; camera.position.z += worldMoveDirection.z * speed * deltaTime; } const currentHeight = isCrouching ? playerCrouchHeight : playerHeight; const downRaycaster = new THREE.Raycaster(camera.position, new THREE.Vector3(0, -1, 0), 0, currentHeight + 0.2); const groundIntersections = downRaycaster.intersectObjects([...collidables, ...stageObjects.filter(o => o.geometry && o.geometry.type === 'PlaneGeometry')]); playerOnFloor = groundIntersections.length > 0; if (playerOnFloor) { const groundY = groundIntersections[0].point.y; if (playerVelocity.y <= 0) { playerVelocity.y = 0; camera.position.y = groundY + currentHeight; } } else { playerVelocity.y -= gravity * deltaTime; } if (keys['Space'] && playerOnFloor) { playerVelocity.y = jumpForce; playerOnFloor = false; } camera.position.y += playerVelocity.y * deltaTime; const playerBox = new THREE.Box3().setFromCenterAndSize(camera.position, new THREE.Vector3(playerRadius*2, currentHeight, playerRadius*2)); playerBox.min.y = camera.position.y - currentHeight; playerBox.max.y = camera.position.y; collidables.forEach(collidable => { const collidableBox = new THREE.Box3().setFromObject(collidable); if (playerBox.intersectsBox(collidableBox)) { const center = new THREE.Vector3(); playerBox.getCenter(center); const collidableCenter = new THREE.Vector3(); collidableBox.getCenter(collidableCenter); const overlap = new THREE.Vector3().subVectors(center, collidableCenter); const halfSizePlayer = new THREE.Vector3(); playerBox.getSize(halfSizePlayer).multiplyScalar(0.5); const halfSizeCollidable = new THREE.Vector3(); collidableBox.getSize(halfSizeCollidable).multiplyScalar(0.5); const penetration = new THREE.Vector3((halfSizePlayer.x + halfSizeCollidable.x) - Math.abs(overlap.x), (halfSizePlayer.y + halfSizeCollidable.y) - Math.abs(overlap.y), (halfSizePlayer.z + halfSizeCollidable.z) - Math.abs(overlap.z)); if (penetration.x < penetration.z && penetration.x < penetration.y) { camera.position.x += penetration.x * Math.sign(overlap.x); } else if (penetration.z < penetration.y) { camera.position.z += penetration.z * Math.sign(overlap.z); } else { if (playerVelocity.y > 0 && overlap.y < 0) { playerVelocity.y = 0; } camera.position.y += penetration.y * Math.sign(overlap.y); } } }); }
+        function updateNPC(npc, deltaTime) { const fleeVector = new THREE.Vector3().subVectors(npc.position, camera.position); fleeVector.y = 0; fleeVector.normalize(); const avoidanceVector = new THREE.Vector3(); const feelerLength = 2.0; let npcDirection = npc.velocity.clone().normalize(); if(npcDirection.lengthSq() === 0) { npc.getWorldDirection(npcDirection); npcDirection.y = 0; npcDirection.normalize(); } const wallRaycaster = new THREE.Raycaster(npc.position, npcDirection); const intersections = wallRaycaster.intersectObjects(collidables); if (intersections.length > 0 && intersections[0].distance < feelerLength) { const wallNormal = intersections[0].face.normal.clone(); avoidanceVector.copy(npcDirection).reflect(wallNormal).multiplyScalar(1.5); } let steeringDirection = fleeVector.add(avoidanceVector); if (steeringDirection.lengthSq() === 0) { steeringDirection.set(Math.random() - 0.5, 0, Math.random() - 0.5); } steeringDirection.normalize(); if (Math.random() > 0.98) { const randomAngle = (Math.random() - 0.5) * Math.PI; steeringDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), randomAngle); } npc.velocity.lerp(steeringDirection, 0.05); const moveStep = npc.velocity.clone().normalize().multiplyScalar(moveSpeed * 0.8 * deltaTime); const nextPos = npc.position.clone().add(moveStep); const moveDistance = moveStep.length(); const collisionRaycaster = new THREE.Raycaster(npc.position, moveStep.clone().normalize()); const collisionIntersections = collisionRaycaster.intersectObjects(collidables); if (collisionIntersections.length === 0 || collisionIntersections[0].distance > moveDistance + 1.5) { npc.position.copy(nextPos); } else { const wallNormal = collisionIntersections[0].face.normal.clone(); npc.velocity.reflect(wallNormal); } npc.position.y = 0.9; }
+        function updateKeyDisplay() { keyW.classList.toggle('key-active', !!keys['KeyW']); keyA.classList.toggle('key-active', !!keys['KeyA']); keyS.classList.toggle('key-active', !!keys['KeyS']); keyD.classList.toggle('key-active', !!keys['KeyD']); keySpace.classList.toggle('key-active', !!keys['Space']); keyShift.classList.toggle('key-active', !!(keys['ShiftLeft'] || keys['ShiftRight'])); }
+        function updateNpcCounter() { const total = scene.userData.totalNpcs || 0; const remaining = npcs.length; npcCounterElement.innerHTML = `已捕捉 / Caught: ${total - remaining} / ${total}`; }
+        function updateLandmarkCounter() { landmarkCounterElement.innerHTML = `已找到 / Found: ${nextLandmarkIndex} / ${landmarks.length}`; }
+        
+        function handleWarmupNarration() {
+            if (narrationBox.style.display === 'block') return;
+            raycaster.setFromCamera(centerScreen, camera);
+            const intersects = raycaster.intersectObjects(collidables, true);
+            if (intersects.length > 0) {
+                let parent = intersects[0].object;
+                while(parent.parent && parent.parent.type !== 'Scene') parent = parent.parent;
+                if (parent.name === 'wasd_device' && !narrationFlags.wasd) {
+                    narrationFlags.wasd = true;
+                    showNarration('触碰中心的红色按钮以激活装置，然后在W/A/S/D上移动进行练习。<br>Touch the central red button to activate, then move on W/A/S/D to practice.');
+                } else if (parent.name === 'skill_device' && !narrationFlags.skill) {
+                    narrationFlags.skill = true;
+                    showNarration('使用空格键(Space)跳过障碍，使用(Shift)蹲下穿过矮门。<br>Use Space to jump over obstacles, and Shift to crouch under gates.');
+                } else if (parent.name === 'warmup_target' && !narrationFlags.target) {
+                    narrationFlags.target = true;
+                    showNarration('这是一个移动靶，试试用鼠标左键射击它！<br>This is a moving target. Try shooting it with the left mouse button!');
+                }
+            }
+        }
+
+        function showNarration(text) {
+            narrationBox.innerHTML = text;
+            narrationBox.style.display = 'block';
+            // The event listener is now handled globally in onMouseDown.
+        }
+
+        function create3DFirework(position) {
+            const particleCount = 50;
+            const colors = [0xffa500, 0xff4500, 0xffff00, 0x00ff00, 0x00ffff];
+            for (let i = 0; i < particleCount; i++) {
+                const particleMat = new THREE.MeshBasicMaterial({ color: colors[Math.floor(Math.random() * colors.length)], transparent: true });
+                const particleGeo = new THREE.SphereGeometry(0.1, 8, 8);
+                const particle = new THREE.Mesh(particleGeo, particleMat);
+                particle.position.copy(position);
+                const velocity = new THREE.Vector3((Math.random() - 0.5) * 10, Math.random() * 10 + 5, (Math.random() - 0.5) * 10);
+                firework3DParticles.push({ mesh: particle, velocity: velocity, life: 1.5, initialLife: 1.5 });
+                scene.add(particle);
+            }
+        }
+
+        function update3DFireworks(deltaTime) {
+            for (let i = firework3DParticles.length - 1; i >= 0; i--) {
+                const p = firework3DParticles[i];
+                p.life -= deltaTime;
+                if (p.life <= 0) {
+                    scene.remove(p.mesh);
+                    p.mesh.geometry.dispose();
+                    p.mesh.material.dispose();
+                    firework3DParticles.splice(i, 1);
+                } else {
+                    p.velocity.y -= 9.8 * deltaTime;
+                    p.mesh.position.add(p.velocity.clone().multiplyScalar(deltaTime));
+                    p.mesh.material.opacity = p.life / p.initialLife;
+                }
+            }
+        }
+
+        function drawMinimap() {
+            if (!minimapCtx || !scene.userData.mazeCols) return;
+            const rows = scene.userData.mazeRows;
+            const cols = scene.userData.mazeCols;
+            const cellSize = scene.userData.cellSize;
+            const canvasWidth = minimap.width;
+            const canvasHeight = minimap.height;
+            const scale = Math.min(canvasWidth / (cols * cellSize), canvasHeight / (rows * cellSize));
+            const mapWidth = cols * cellSize * scale;
+            const mapHeight = rows * cellSize * scale;
+            const mapOffsetX = (canvasWidth - mapWidth) / 2;
+            const mapOffsetY = (canvasHeight - mapHeight) / 2;
+            const worldOffsetX = -(cols * cellSize) / 2;
+            const worldOffsetZ = -(rows * cellSize) / 2;
+            minimapCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+            minimapCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            minimapCtx.fillRect(0, 0, canvasWidth, canvasHeight);
+            const worldToMap = (worldPos) => ({ x: mapOffsetX + ((worldPos.x - worldOffsetX) * scale), y: mapOffsetY + ((worldPos.z - worldOffsetZ) * scale) });
+            if (scene.userData.mazeLayout) {
+                const layout = scene.userData.mazeLayout;
+                for (let i = 0; i < rows; i++) {
+                    for (let j = 0; j < cols; j++) {
+                        const cell = layout[i][j];
+                        const x = mapOffsetX + j * cellSize * scale;
+                        const y = mapOffsetY + i * cellSize * scale;
+                        const w = cellSize * scale;
+                        const h = cellSize * scale;
+                        if (cell === 1) minimapCtx.fillStyle = '#666';
+                        else if (cell === 'J') minimapCtx.fillStyle = '#ff8c00';
+                        else if (cell === 'C') minimapCtx.fillStyle = '#708090';
+                        else minimapCtx.fillStyle = '#333';
+                        minimapCtx.fillRect(x, y, w, h);
+                    }
+                }
+            } else if (currentStage === 3 && scene.userData.walls) {
+                 minimapCtx.fillStyle = '#666';
+                 scene.userData.walls.forEach(wall => {
+                    const wallCenterMap = worldToMap(new THREE.Vector3(wall.x, 0, wall.z));
+                    const w = wall.w * scale;
+                    const h = wall.d * scale;
+                    minimapCtx.fillRect(wallCenterMap.x - w/2, wallCenterMap.y - h/2, w, h);
+                 });
+            }
+            if (currentStage === 3) {
+                const route = scene.userData.routePath;
+                if(route && route.length > 0) {
+                    minimapCtx.strokeStyle = '#ffdd57';
+                    minimapCtx.lineWidth = 2;
+                    minimapCtx.setLineDash([4, 4]);
+                    const startPoint = worldToMap(route[0]);
+                    minimapCtx.beginPath();
+                    minimapCtx.moveTo(startPoint.x, startPoint.y);
+                    for(let i = 1; i < route.length; i++) {
+                        const point = worldToMap(route[i]);
+                        minimapCtx.lineTo(point.x, point.y);
+                    }
+                    minimapCtx.stroke();
+                    minimapCtx.setLineDash([]);
+                }
+                if (scene.userData.startPos) {
+                    const startMapPos = worldToMap(scene.userData.startPos);
+                    minimapCtx.fillStyle = '#00ff00';
+                    minimapCtx.beginPath();
+                    minimapCtx.arc(startMapPos.x, startMapPos.y, 5, 0, 2 * Math.PI);
+                    minimapCtx.fill();
+                }
+                if (scene.userData.endPos) {
+                    const endMapPos = worldToMap(scene.userData.endPos);
+                    minimapCtx.fillStyle = '#ff0000';
+                    minimapCtx.beginPath();
+                    minimapCtx.arc(endMapPos.x, endMapPos.y, 5, 0, 2 * Math.PI);
+                    minimapCtx.fill();
+                }
+            } else if (currentStage >= 6 && currentStage <= 9) { 
+                const endMapPos = worldToMap(scene.userData.endPos); 
+                minimapCtx.fillStyle = '#ff0000'; 
+                minimapCtx.beginPath(); 
+                minimapCtx.moveTo(endMapPos.x, endMapPos.y - 5); 
+                for (let i = 0; i < 5; i++) { 
+                    minimapCtx.lineTo(endMapPos.x + Math.cos((18 + i * 72) * Math.PI / 180) * 5, endMapPos.y - Math.sin((18 + i * 72) * Math.PI / 180) * 5); 
+                    minimapCtx.lineTo(endMapPos.x + Math.cos((54 + i * 72) * Math.PI / 180) * 2, endMapPos.y - Math.sin((54 + i * 72) * Math.PI / 180) * 2); 
+                } 
+                minimapCtx.closePath(); 
+                minimapCtx.fill(); 
+            } else if (currentStage >= 10 && currentStage <= 12) { 
+                minimapCtx.fillStyle = '#0099ff'; 
+                npcs.forEach(npc => { 
+                    const npcMapPos = worldToMap(npc.position); 
+                    minimapCtx.beginPath(); 
+                    minimapCtx.arc(npcMapPos.x, npcMapPos.y, 2.5, 0, 2 * Math.PI); 
+                    minimapCtx.fill(); 
+                }); 
+            } else if (currentStage >= 13 && currentStage <= 15) {
+                landmarks.forEach((landmark) => {
+                    const landmarkMapPos = worldToMap(landmark.position);
+                    minimapCtx.fillStyle = landmark.userData.isFound ? '#00ff00' : '#ffff00';
+                    minimapCtx.beginPath();
+                    minimapCtx.arc(landmarkMapPos.x, landmarkMapPos.y, 4, 0, 2 * Math.PI);
+                    minimapCtx.fill();
+                    minimapCtx.fillStyle = '#000';
+                    minimapCtx.font = 'bold 10px sans-serif';
+                    minimapCtx.textAlign = 'center';
+                    minimapCtx.textBaseline = 'middle';
+                    minimapCtx.fillText(landmark.userData.number, landmarkMapPos.x, landmarkMapPos.y);
+                });
+            }
+            const playerMapPos = worldToMap(camera.position);
+            const angle = -euler.y;
+            minimapCtx.save();
+            minimapCtx.translate(playerMapPos.x, playerMapPos.y);
+            minimapCtx.rotate(angle);
+            minimapCtx.fillStyle = '#00ddff';
+            minimapCtx.beginPath();
+            minimapCtx.moveTo(0, -6);
+            minimapCtx.lineTo(5, 4);
+            minimapCtx.lineTo(0, 2);
+            minimapCtx.lineTo(-5, 4);
+            minimapCtx.closePath();
+            minimapCtx.fill();
+            minimapCtx.restore();
+        }
+
+    </script>
+</body>
+</html>
