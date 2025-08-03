@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>第一人称操作教学 (V14.6 - WASD交互优化)</title>
+    <title>第一人称操作教学 (V14.7 - 游戏重置功能)</title>
     <style>
         body {
             margin: 0;
@@ -169,6 +169,13 @@
             border-color: #444;
             cursor: not-allowed;
         }
+        #reset-game-button {
+            background-color: #b22222;
+            border-color: #ff6347;
+        }
+        #reset-game-button:hover {
+            background-color: #dc143c;
+        }
         .level-time {
             font-size: 12px;
             color: #ffdd57;
@@ -235,8 +242,8 @@
             pointer-events: none;
         }
         
-        #profile-form {
-            background-color: rgba(20, 20, 20, 0.85);
+        #profile-form, .confirm-box {
+            background-color: rgba(20, 20, 20, 0.9);
             padding: 30px 40px;
             border-radius: 20px;
             border: 2px solid #888;
@@ -244,9 +251,9 @@
             flex-direction: column;
             gap: 20px;
             width: 90%;
-            max-width: 400px;
+            max-width: 450px;
         }
-        #profile-form h2 {
+        #profile-form h2, .confirm-box h2 {
             margin: 0 0 10px 0;
             font-size: 28px;
             color: #ffdd57;
@@ -511,7 +518,7 @@
     </div>
 
     <div id="training-choice-overlay" class="overlay" style="display: none; z-index: 16;">
-        <div id="training-choice-box">
+        <div id="training-choice-box" class="confirm-box">
             <h2>移动特训 / Movement Special Training</h2>
             <p style="font-size: 16px; line-height: 1.5;">
                 您想开始带有指令的移动特训吗？<br>
@@ -524,6 +531,21 @@
         </div>
     </div>
     
+    <!-- NEW: Reset Game Confirmation Overlay -->
+    <div id="reset-confirm-overlay" class="overlay" style="display: none; z-index: 16;">
+        <div id="reset-confirm-box" class="confirm-box">
+            <h2>重置游戏？ / Reset Game?</h2>
+            <p style="font-size: 16px; line-height: 1.5;">
+                您确定要清除所有游戏记录吗？此操作无法撤销。<br>
+                <span style="font-size: 14px; color: #ccc;">Are you sure you want to erase all game progress? This action cannot be undone.</span>
+            </p>
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <button id="reset-confirm-yes" class="menu-button" style="width: 150px; background-color: #b22222;">确定 / Confirm</button>
+                <button id="reset-confirm-no" class="menu-button" style="width: 150px;">取消 / Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <div id="training-command"></div>
 
     <div id="crosshair"></div>
@@ -539,6 +561,7 @@
             <div id="level-select-menu"></div>
             <button class="menu-button" id="warmup-button">返回热身<br>Warm-up</button>
             <button class="menu-button" id="main-menu-button">返回主菜单<br>Main Menu</button>
+            <button class="menu-button" id="reset-game-button">游戏重置<br>Reset Game</button>
         </div>
     </div>
 
@@ -605,7 +628,7 @@
         let instructionElement, blockerElement, crosshairElement, npcCounterElement, landmarkCounterElement;
         let menuOverlay, levelSelectMenu, modeSelectionScreen, playerInfoElement;
         let keyDisplay, keyW, keyA, keyS, keyD, keySpace, keyShift;
-        let narrationBox, resultsOverlay, trainingChoiceOverlay, trainingCommandElement;
+        let narrationBox, resultsOverlay, trainingChoiceOverlay, trainingCommandElement, resetConfirmOverlay;
 
         // --- Stage Specific Variables ---
         let stageObjects = [];
@@ -692,6 +715,7 @@
             resultsOverlay = document.getElementById('results-overlay');
             trainingChoiceOverlay = document.getElementById('training-choice-overlay');
             trainingCommandElement = document.getElementById('training-command');
+            resetConfirmOverlay = document.getElementById('reset-confirm-overlay');
 
             playerVelocity = new THREE.Vector3();
 
@@ -699,6 +723,7 @@
             setupMenu();
             setupResultsScreen();
             setupTrainingChoice();
+            setupResetConfirmation();
             document.addEventListener('pointerlockchange', onPointerlockChange, false);
             document.addEventListener('pointerlockerror', onPointerlockError, false);
             document.addEventListener('keydown', onKeyDown, false);
@@ -834,6 +859,9 @@
                 event.stopPropagation();
                 levelSelectMenu.style.display = levelSelectMenu.style.display === 'flex' ? 'none' : 'flex';
             });
+            document.getElementById('reset-game-button').addEventListener('click', () => {
+                resetConfirmOverlay.style.display = 'flex';
+            });
         }
         
         function setupResultsScreen() {
@@ -855,6 +883,26 @@
                 wasdTrainingMode = 'free';
                 trainingChoiceOverlay.style.display = 'none';
                 document.body.requestPointerLock();
+            });
+        }
+
+        function setupResetConfirmation() {
+            document.getElementById('reset-confirm-no').addEventListener('click', () => {
+                resetConfirmOverlay.style.display = 'none';
+            });
+            document.getElementById('reset-confirm-yes').addEventListener('click', () => {
+                localStorage.removeItem('playerProfile');
+                localStorage.removeItem('unlockedLevel');
+                localStorage.removeItem('levelTimes_campaign');
+                localStorage.removeItem('levelStars');
+                
+                playerProfile = { nickname: '', title: '' };
+                unlockedLevel = 1;
+                levelTimes = {};
+                levelStars = {};
+
+                resetConfirmOverlay.style.display = 'none';
+                document.getElementById('main-menu-button').click();
             });
         }
 
@@ -910,8 +958,9 @@
                 keyDisplay.style.opacity = '0';
                 document.removeEventListener('mousemove', onMouseMove, false);
                 pauseTimer();
-                if (!isTransitioning && !stageCompletionFlag && resultsOverlay.style.display !== 'flex' && trainingChoiceOverlay.style.display !== 'flex') {
+                if (!isTransitioning && !stageCompletionFlag && resultsOverlay.style.display !== 'flex' && trainingChoiceOverlay.style.display !== 'flex' && resetConfirmOverlay.style.display !== 'flex') {
                     menuOverlay.style.display = 'flex';
+                    document.getElementById('reset-game-button').style.display = (gameMode === 'campaign') ? 'inline-block' : 'none';
                     updateLevelSelectMenu();
                 }
             }
@@ -932,24 +981,20 @@
         }
 
         function onMouseDown(event) {
-            // If the narration box is visible, the first click should only hide it.
             if (narrationBox.style.display === 'block') {
                 narrationBox.style.display = 'none';
-                return; // Prioritize hiding narration box and do nothing else.
+                return;
             }
 
-            // If narration box is not visible, then check for training cancellation.
             if (currentStage === 0 && wasdTrainingMode === 'special') {
                 wasdTrainingMode = 'free';
                 trainingCommandElement.style.display = 'none';
                 currentTrainingKey = null;
                 isWaitingForNextCommand = false;
-                // Show a confirmation message that training is cancelled.
                 showNarration('已取消移动特训。<br>Canceled special training.');
-                return; // Prevent shooting while canceling
+                return;
             }
 
-            // Default shooting action if no UI was interacted with.
             if (document.pointerLockElement === document.body && currentStage === 0 && shootCooldown <= 0) {
                 handleShooting();
             }
@@ -1812,7 +1857,6 @@
         function showNarration(text) {
             narrationBox.innerHTML = text;
             narrationBox.style.display = 'block';
-            // The event listener is now handled globally in onMouseDown.
         }
 
         function create3DFirework(position) {
