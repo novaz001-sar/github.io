@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>第一人称操作教学 (V14.7 - 游戏重置功能)</title>
+    <title>第一人称操作教学 (V14.10 )</title>
     <style>
         body {
             margin: 0;
@@ -531,7 +531,6 @@
         </div>
     </div>
     
-    <!-- NEW: Reset Game Confirmation Overlay -->
     <div id="reset-confirm-overlay" class="overlay" style="display: none; z-index: 16;">
         <div id="reset-confirm-box" class="confirm-box">
             <h2>重置游戏？ / Reset Game?</h2>
@@ -542,6 +541,20 @@
             <div style="display: flex; gap: 15px; justify-content: center;">
                 <button id="reset-confirm-yes" class="menu-button" style="width: 150px; background-color: #b22222;">确定 / Confirm</button>
                 <button id="reset-confirm-no" class="menu-button" style="width: 150px;">取消 / Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="start-campaign-confirm-overlay" class="overlay" style="display: none; z-index: 16;">
+        <div id="start-campaign-confirm-box" class="confirm-box">
+            <h2>开始通关？ / Start Campaign?</h2>
+            <p style="font-size: 16px; line-height: 1.5;">
+                您准备好开始第一个挑战了吗？<br>
+                <span style="font-size: 14px; color: #ccc;">Are you ready to start the first challenge?</span>
+            </p>
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <button id="start-confirm-yes" class="menu-button" style="width: 150px;">确认 / Confirm</button>
+                <button id="start-confirm-no" class="menu-button" style="width: 150px; background-color: #777;">返回 / Return</button>
             </div>
         </div>
     </div>
@@ -628,7 +641,7 @@
         let instructionElement, blockerElement, crosshairElement, npcCounterElement, landmarkCounterElement;
         let menuOverlay, levelSelectMenu, modeSelectionScreen, playerInfoElement;
         let keyDisplay, keyW, keyA, keyS, keyD, keySpace, keyShift;
-        let narrationBox, resultsOverlay, trainingChoiceOverlay, trainingCommandElement, resetConfirmOverlay;
+        let narrationBox, resultsOverlay, trainingChoiceOverlay, trainingCommandElement, resetConfirmOverlay, startCampaignConfirmOverlay;
 
         // --- Stage Specific Variables ---
         let stageObjects = [];
@@ -653,6 +666,9 @@
         let wasdTrainingMode = null; // null, 'special', 'free'
         let currentTrainingKey = null; // 'W', 'A', 'S', 'D'
         let isWaitingForNextCommand = false;
+
+        // --- Warmup Stage Variables ---
+        let startCampaignTrigger = null;
 
         // --- Shooting System Variables ---
         let toyGun;
@@ -716,6 +732,7 @@
             trainingChoiceOverlay = document.getElementById('training-choice-overlay');
             trainingCommandElement = document.getElementById('training-command');
             resetConfirmOverlay = document.getElementById('reset-confirm-overlay');
+            startCampaignConfirmOverlay = document.getElementById('start-campaign-confirm-overlay');
 
             playerVelocity = new THREE.Vector3();
 
@@ -724,6 +741,7 @@
             setupResultsScreen();
             setupTrainingChoice();
             setupResetConfirmation();
+            setupStartCampaignConfirmation();
             document.addEventListener('pointerlockchange', onPointerlockChange, false);
             document.addEventListener('pointerlockerror', onPointerlockError, false);
             document.addEventListener('keydown', onKeyDown, false);
@@ -906,6 +924,21 @@
             });
         }
 
+        function setupStartCampaignConfirmation() {
+            document.getElementById('start-confirm-no').addEventListener('click', () => {
+                startCampaignConfirmOverlay.style.display = 'none';
+                // BUGFIX: Reset player position and show blocker
+                camera.position.set(0, playerHeight, 10);
+                camera.quaternion.set(0, 0, 0, 1);
+                euler.set(0, 0, 0, 'YXZ');
+                blockerElement.style.display = 'flex';
+            });
+            document.getElementById('start-confirm-yes').addEventListener('click', () => {
+                startCampaignConfirmOverlay.style.display = 'none';
+                hideMenuAndLoad(1);
+            });
+        }
+
         function updateLevelSelectMenu() {
             const stageNames = [
                 "1. 看/Look", "2. 前进/Forward", "3. 移动/Move", "4. 跳跃/Jump", "5. 综合/Skills", 
@@ -958,7 +991,12 @@
                 keyDisplay.style.opacity = '0';
                 document.removeEventListener('mousemove', onMouseMove, false);
                 pauseTimer();
-                if (!isTransitioning && !stageCompletionFlag && resultsOverlay.style.display !== 'flex' && trainingChoiceOverlay.style.display !== 'flex' && resetConfirmOverlay.style.display !== 'flex') {
+                if (!isTransitioning && !stageCompletionFlag && 
+                    resultsOverlay.style.display !== 'flex' && 
+                    trainingChoiceOverlay.style.display !== 'flex' && 
+                    resetConfirmOverlay.style.display !== 'flex' &&
+                    startCampaignConfirmOverlay.style.display !== 'flex'
+                ) {
                     menuOverlay.style.display = 'flex';
                     document.getElementById('reset-game-button').style.display = (gameMode === 'campaign') ? 'inline-block' : 'none';
                     updateLevelSelectMenu();
@@ -1040,6 +1078,7 @@
             wasdTrainingMode = null;
             currentTrainingKey = null;
             isWaitingForNextCommand = false;
+            startCampaignTrigger = null;
             narrationFlags = { wasd: false, skill: false, target: false };
             npcCounterElement.style.display = 'none';
             landmarkCounterElement.style.display = 'none';
@@ -1055,6 +1094,7 @@
             resultsOverlay.style.display = 'none';
             trainingChoiceOverlay.style.display = 'none';
             trainingCommandElement.style.display = 'none';
+            startCampaignConfirmOverlay.style.display = 'none';
 
             switch(currentStage) {
                 case 0: setupStage0_Warmup(); break;
@@ -1197,6 +1237,7 @@
                     handleWarmupAiming(); 
                     updateWasdTraining();
                     handleWarmupNarration();
+                    checkStartCampaignTrigger();
                 }
                 if (currentStage === 1) handleAiming();
                 if (currentStage >= 10 && currentStage <= 12 && npcs.length > 0) npcs.forEach(npc => updateNPC(npc, deltaTime));
@@ -1331,6 +1372,9 @@
                 animatedObjects.push(textMesh); 
 
                 createWasdTrainingArea(font);
+                if (gameMode === 'campaign') {
+                    createStartCampaignTrigger(font);
+                }
                 
                 const skillGroup = new THREE.Group();
                 skillGroup.name = "skill_device";
@@ -1403,6 +1447,31 @@
             createKey('D', new THREE.Vector3(areaCenter.x + keySpacing, areaCenter.y, areaCenter.z));
             scene.add(wasdGroup);
             stageObjects.push(wasdGroup);
+        }
+
+        function createStartCampaignTrigger(font) {
+            const triggerGroup = new THREE.Group();
+            const geo = new THREE.CylinderGeometry(1.5, 1.5, 0.2, 32);
+            const mat = new THREE.MeshStandardMaterial({ color: 0xdc143c, emissive: 0x8B0000, metalness: 0.7, roughness: 0.4 });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.castShadow = true;
+            triggerGroup.add(mesh);
+
+            const textMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const textGeoEn = new THREE.TextGeometry('Start Campaign', { font: font, size: 0.3, height: 0.02 });
+            textGeoEn.computeBoundingBox();
+            const textMeshEn = new THREE.Mesh(textGeoEn, textMat);
+            textMeshEn.position.set(-0.5 * (textGeoEn.boundingBox.max.x - textGeoEn.boundingBox.min.x), 0.11, 0);
+            textMeshEn.rotation.x = -Math.PI / 2;
+            triggerGroup.add(textMeshEn);
+            
+            triggerGroup.position.set(0, 0.1, 5);
+            scene.add(triggerGroup);
+            stageObjects.push(triggerGroup);
+            startCampaignTrigger = {
+                mesh: triggerGroup,
+                boundingBox: new THREE.Box3().setFromObject(triggerGroup)
+            };
         }
 
         function startNextTrainingCommand() {
@@ -1484,6 +1553,19 @@
                  wasdCenterButton.mesh.material = wasdCenterButton.activeMaterial;
             } else {
                  wasdCenterButton.mesh.material = wasdCenterButton.inactiveMaterial;
+            }
+        }
+
+        function checkStartCampaignTrigger() {
+            if (gameMode !== 'campaign' || !startCampaignTrigger || startCampaignConfirmOverlay.style.display === 'flex') {
+                return;
+            }
+            const playerPos = camera.position;
+            const box = startCampaignTrigger.boundingBox;
+            if (playerPos.x >= box.min.x && playerPos.x <= box.max.x &&
+                playerPos.z >= box.min.z && playerPos.z <= box.max.z) {
+                if (document.pointerLockElement) document.exitPointerLock();
+                startCampaignConfirmOverlay.style.display = 'flex';
             }
         }
 
