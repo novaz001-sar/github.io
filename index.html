@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>第一人称操作教学 (V15.7 - 折返跑更新)</title>
+    <title>第一人称操作教学 (V15.8 - 柱子美化)</title>
     <style>
         body {
             margin: 0;
@@ -1085,6 +1085,15 @@
             
             if (toyGun) toyGun.visible = (stageIndex === 0);
             
+            // Clear animatedObjects but be careful not to clear things that are re-used
+            animatedObjects.forEach(obj => {
+                if (obj.userData.animation) { // Custom check for animated rings
+                    obj.geometry.dispose();
+                    obj.material.dispose();
+                }
+            });
+            animatedObjects = [];
+
             bullets.forEach(b => scene.remove(b));
             bulletHoles.forEach(h => h.mesh.parent.remove(h.mesh));
             firework3DParticles.forEach(p => scene.remove(p.mesh));
@@ -1101,7 +1110,7 @@
             dirLight.shadow.mapSize.height = 2048;
             scene.add(dirLight);
 
-            stageObjects = []; collidables = []; animatedObjects = []; npcs = []; landmarks = [];
+            stageObjects = []; collidables = []; npcs = []; landmarks = [];
             bullets = []; bulletHoles = []; firework3DParticles = [];
             stage1Targets = []; aimedTargets.clear();
             shuttleRunState = {}; corridorState = {}; corridorTargets = []; activatedCorridorTargets.clear();
@@ -1261,10 +1270,20 @@
             }
 
             animatedObjects.forEach(obj => {
-                if(obj.name === "welcome_text") { obj.position.y = 4 + Math.sin(totalTime * 1.5) * 0.2; obj.rotation.y = Math.sin(totalTime * 0.5) * 0.2; } 
-                else if (obj.name === "warmup_target") { obj.position.x = Math.sin(totalTime * 0.5) * 8; }
-                else if(obj.children.length > 10) { obj.position.y = 0.5 + Math.sin(totalTime * 1.5) * 0.1; obj.rotation.y += 0.1 * deltaTime; } 
-                else { obj.rotation.y += 0.8 * deltaTime; obj.rotation.x += 0.5 * deltaTime; }
+                if (obj.userData.animation) {
+                    obj.userData.animation(totalTime);
+                } else if(obj.name === "welcome_text") { 
+                    obj.position.y = 4 + Math.sin(totalTime * 1.5) * 0.2; 
+                    obj.rotation.y = Math.sin(totalTime * 0.5) * 0.2; 
+                } else if (obj.name === "warmup_target") { 
+                    obj.position.x = Math.sin(totalTime * 0.5) * 8; 
+                } else if(obj.children.length > 10) { 
+                    obj.position.y = 0.5 + Math.sin(totalTime * 1.5) * 0.1; 
+                    obj.rotation.y += 0.1 * deltaTime; 
+                } else { 
+                    obj.rotation.y += 0.8 * deltaTime; 
+                    obj.rotation.x += 0.5 * deltaTime; 
+                }
             });
 
             updateBullets(deltaTime);
@@ -1676,20 +1695,63 @@
         }
 
         function createPillarsForShuttleRun(count, radius) {
-            const pillarGeo = new THREE.CylinderGeometry(0.5, 0.5, 10, 16);
-            const pillarMat = new THREE.MeshStandardMaterial({ color: 0x666677 });
             for(let i = 0; i < count; i++) {
+                const pillarGroup = new THREE.Group();
+
+                // Base
+                const baseGeo = new THREE.CylinderGeometry(0.8, 1, 0.5, 16);
+                const baseMat = new THREE.MeshStandardMaterial({ color: 0x333344, metalness: 0.8, roughness: 0.3 });
+                const base = new THREE.Mesh(baseGeo, baseMat);
+                base.position.y = 0.25;
+                pillarGroup.add(base);
+
+                // Main Body
+                const bodyGeo = new THREE.CylinderGeometry(0.5, 0.7, 8, 16);
+                const bodyMat = new THREE.MeshStandardMaterial({ color: 0x777788, metalness: 0.6, roughness: 0.5 });
+                const body = new THREE.Mesh(bodyGeo, bodyMat);
+                body.position.y = 4.5; // 0.5 (base height) + 8/2
+                pillarGroup.add(body);
+
+                // Top Emissive Part
+                const topGeo = new THREE.IcosahedronGeometry(0.6, 0);
+                const topMat = new THREE.MeshStandardMaterial({ 
+                    color: 0x00ffff, 
+                    emissive: 0x00ffff, 
+                    emissiveIntensity: 1.5,
+                    metalness: 0.2,
+                    roughness: 0.1
+                });
+                const top = new THREE.Mesh(topGeo, topMat);
+                top.position.y = 9; // 0.5 + 8 + 0.5
+                pillarGroup.add(top);
+                
+                // Add an animated ring
+                const ringGeo = new THREE.TorusGeometry(0.8, 0.05, 8, 32);
+                const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.rotation.x = Math.PI / 2;
+                ring.position.y = 1; // Start position
+                pillarGroup.add(ring);
+                
+                // Custom animation data for the ring
+                ring.userData.animation = (time) => {
+                    ring.position.y = 1 + (Math.sin(time * 2 + i) + 1) / 2 * 7; // Animate between y=1 and y=8
+                    ring.material.opacity = 0.5 + (Math.sin(time * 2 + i) + 1) / 4;
+                };
+                animatedObjects.push(ring);
+
                 const angle = Math.random() * Math.PI * 2;
                 const r = 10 + Math.random() * (radius - 10);
                 const x = Math.cos(angle) * r;
                 const z = Math.sin(angle) * r;
-                const pillar = new THREE.Mesh(pillarGeo, pillarMat);
-                pillar.position.set(x, 5, z);
-                pillar.castShadow = true;
-                pillar.receiveShadow = true;
-                scene.add(pillar);
-                stageObjects.push(pillar);
-                collidables.push(pillar);
+                pillarGroup.position.set(x, 0, z);
+
+                pillarGroup.castShadow = true;
+                pillarGroup.receiveShadow = true;
+                
+                scene.add(pillarGroup);
+                stageObjects.push(pillarGroup);
+                collidables.push(body); // Only the main body is for collision
             }
         }
 
