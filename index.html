@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>第一人称操作教学 (V15.4 - 动态关卡更新)</title>
+    <title>第一人称操作教学 (V15.6 - 热身倒计时更新)</title>
     <style>
         body {
             margin: 0;
@@ -118,7 +118,7 @@
             text-shadow: 2px 2px 4px #000;
             display: none;
         }
-        #timer {
+        #timer, #warmup-timer-display {
             position: absolute;
             top: 20px;
             left: 50%;
@@ -549,10 +549,27 @@
         </div>
     </div>
 
+    <!-- New Warmup Confirmation Overlay -->
+    <div id="warmup-confirm-overlay" class="overlay" style="display: none; z-index: 17;">
+        <div id="warmup-confirm-box" class="confirm-box">
+            <h2>开始挑战？ / Start Challenge?</h2>
+            <p style="font-size: 16px; line-height: 1.5;">
+                热身结束！您准备好进入第一关开始正式挑战了吗？<br>
+                <span style="font-size: 14px; color: #ccc;">Warm-up complete! Are you ready to enter Level 1 and start the official challenge?</span>
+            </p>
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <button id="warmup-confirm-yes" class="menu-button" style="width: 150px;">准备好了 / Yes</button>
+                <button id="warmup-confirm-no" class="menu-button" style="width: 150px; background-color: #777;">再等等 / Not Yet</button>
+            </div>
+        </div>
+    </div>
+
+
     <div id="training-command"></div>
 
     <div id="crosshair"></div>
     <div id="timer">0.00s</div>
+    <div id="warmup-timer-display"></div> <!-- New Warmup Timer -->
     <div id="minimap-container"><canvas id="minimap"></canvas></div>
     <div id="narration-box"></div>
 
@@ -646,6 +663,7 @@
         let menuOverlay, levelSelectMenu, modeSelectionScreen, playerInfoElement;
         let keyDisplay, keyW, keyA, keyS, keyD, keySpace, keyShift;
         let narrationBox, resultsOverlay, trainingChoiceOverlay, trainingCommandElement, resetConfirmOverlay;
+        let warmupConfirmOverlay; // New UI element for warmup confirmation
 
         // --- Stage Specific Variables ---
         let stageObjects = [];
@@ -695,6 +713,10 @@
         let firework3DParticles = [];
         let fireworksInterval = null;
         
+        // --- Warmup Countdown Variables ---
+        let warmupCountdownInterval = null;
+        let warmupTimerDisplayElement;
+
         init();
 
         function init() {
@@ -743,6 +765,9 @@
             trainingChoiceOverlay = document.getElementById('training-choice-overlay');
             trainingCommandElement = document.getElementById('training-command');
             resetConfirmOverlay = document.getElementById('reset-confirm-overlay');
+            warmupConfirmOverlay = document.getElementById('warmup-confirm-overlay');
+            warmupTimerDisplayElement = document.getElementById('warmup-timer-display');
+
 
             playerVelocity = new THREE.Vector3();
 
@@ -751,6 +776,7 @@
             setupResultsScreen();
             setupTrainingChoice();
             setupResetConfirmation();
+            setupWarmupConfirmation(); // Setup for the new confirmation dialog
             document.addEventListener('pointerlockchange', onPointerlockChange, false);
             document.addEventListener('pointerlockerror', onPointerlockError, false);
             document.addEventListener('keydown', onKeyDown, false);
@@ -933,6 +959,17 @@
             });
         }
 
+        function setupWarmupConfirmation() {
+            document.getElementById('warmup-confirm-yes').addEventListener('click', () => {
+                warmupConfirmOverlay.style.display = 'none';
+                hideMenuAndLoad(1);
+            });
+            document.getElementById('warmup-confirm-no').addEventListener('click', () => {
+                warmupConfirmOverlay.style.display = 'none';
+                document.body.requestPointerLock();
+            });
+        }
+
         function updateLevelSelectMenu() {
             const stageNames = [
                 "1. 看/Look", "2. 前进/Forward", "3. 折返跑/Shuttle Run", "4. 使命长廊/Mission Corridor", 
@@ -986,7 +1023,7 @@
                 keyDisplay.style.opacity = '0';
                 document.removeEventListener('mousemove', onMouseMove, false);
                 pauseTimer();
-                if (!isTransitioning && !stageCompletionFlag && resultsOverlay.style.display !== 'flex' && trainingChoiceOverlay.style.display !== 'flex' && resetConfirmOverlay.style.display !== 'flex') {
+                if (!isTransitioning && !stageCompletionFlag && resultsOverlay.style.display !== 'flex' && trainingChoiceOverlay.style.display !== 'flex' && resetConfirmOverlay.style.display !== 'flex' && warmupConfirmOverlay.style.display !== 'flex') {
                     menuOverlay.style.display = 'flex';
                     document.getElementById('reset-game-button').style.display = (gameMode === 'campaign') ? 'inline-block' : 'none';
                     updateLevelSelectMenu();
@@ -1029,10 +1066,12 @@
         }
 
         function loadStage(stageIndex) {
-            if (fireworksInterval) {
-                clearInterval(fireworksInterval);
-                fireworksInterval = null;
-            }
+            // Cleanup from previous stage, including warmup countdown
+            if (fireworksInterval) { clearInterval(fireworksInterval); fireworksInterval = null; }
+            if (warmupCountdownInterval) { clearInterval(warmupCountdownInterval); warmupCountdownInterval = null; }
+            if (warmupTimerDisplayElement) warmupTimerDisplayElement.style.display = 'none';
+            if (warmupConfirmOverlay) warmupConfirmOverlay.style.display = 'none';
+
             scene.background.set(0x87ceeb);
             scene.fog = new THREE.Fog(0x87ceeb, 0, 150);
 
@@ -1407,6 +1446,32 @@
                 stageObjects.push(skillGroup);
                 collidables.push(jumpObstacle, crouchObstacleTop, crouchObstacleLeft, crouchObstacleRight);
             }); 
+            // Start countdown if in campaign mode
+            if (gameMode === 'campaign') {
+                startWarmupCountdown();
+            }
+        }
+
+        // New function to start the warmup countdown
+        function startWarmupCountdown() {
+            if (warmupCountdownInterval) clearInterval(warmupCountdownInterval);
+            
+            let countdown = 30;
+            warmupTimerDisplayElement.style.display = 'block';
+            warmupTimerDisplayElement.textContent = `第一关挑战倒计时: ${countdown}s`;
+
+            warmupCountdownInterval = setInterval(() => {
+                countdown--;
+                warmupTimerDisplayElement.textContent = `第一关挑战倒计时: ${countdown}s`;
+
+                if (countdown <= 0) {
+                    clearInterval(warmupCountdownInterval);
+                    warmupCountdownInterval = null;
+                    warmupTimerDisplayElement.style.display = 'none';
+                    if (document.pointerLockElement) document.exitPointerLock();
+                    warmupConfirmOverlay.style.display = 'flex';
+                }
+            }, 1000);
         }
 
         function createWasdTrainingArea(font) {
@@ -1611,8 +1676,7 @@
         function setupStage4_MissionCorridor() {
             camera.position.set(0, playerHeight, 48);
             camera.quaternion.set(0, 0, 0, 1);
-            euler.set(0, Math.PI, 0, 'YXZ');
-            camera.quaternion.setFromEuler(euler);
+            euler.set(0, 0, 0, 'YXZ'); // Player starts facing forward
             
             const corridorLength = 100;
             const corridorWidth = 30;
@@ -1686,6 +1750,9 @@
             const intersects = raycaster.intersectObjects(corridorTargets);
             if (intersects.length > 0) {
                 const aimedObject = intersects[0].object;
+                // Proximity check
+                if (camera.position.distanceTo(aimedObject.position) > 15) return;
+
                 if (!activatedCorridorTargets.has(aimedObject)) {
                     aimedObject.material.color.setHex(0x00ff00);
                     aimedObject.material.emissive.setHex(0x008800);
@@ -2041,7 +2108,20 @@
 
         function handleWarmupAiming() { raycaster.setFromCamera(centerScreen, camera); const intersects = raycaster.intersectObjects(stageObjects, true); let currentHit = null; for (const intersect of intersects) { if (intersect.object.userData.isTargetRing) { currentHit = intersect.object; break; } } if (highlightedRing && highlightedRing !== currentHit) { highlightedRing.material.emissive.setHex(0x000000); highlightedRing = null; } if (currentHit && currentHit !== highlightedRing) { highlightedRing = currentHit; highlightedRing.material.emissive.setHex(0x666666); } }
         function handleAiming() { raycaster.setFromCamera(centerScreen, camera); const intersects = raycaster.intersectObjects(stage1Targets); if (intersects.length > 0) { const aimedObject = intersects[0].object; if (aimedObject.userData.isTarget && !aimedTargets.has(aimedObject)) { aimedObject.material.emissive.setHex(0x00ff00); aimedTargets.add(aimedObject); updateInstructions(); } } }
-        function updatePlayer(deltaTime) { const moveDirection = new THREE.Vector3(); if (keys['KeyW']) moveDirection.z = -1; if (keys['KeyS']) moveDirection.z = 1; if (keys['KeyA']) moveDirection.x = -1; if (keys['KeyD']) moveDirection.x = 1; if (!hasPlayerMoved && moveDirection.lengthSq() > 0) { hasPlayerMoved = true; if (currentStage >= 15 && currentStage <= 17) { minimapContainer.style.display = 'none'; } } if (!canPlayerMove) return; const wantsToCrouch = (keys['ShiftLeft'] || keys['ShiftRight']); if (wantsToCrouch) { if (!isCrouching && playerOnFloor) { camera.position.y -= (playerHeight - playerCrouchHeight); } isCrouching = true; } else { if (isCrouching) { const upRaycaster = new THREE.Raycaster(camera.position, new THREE.Vector3(0, 1, 0), 0, playerHeight - playerCrouchHeight + 0.1); const ceilingIntersections = upRaycaster.intersectObjects(collidables); if (ceilingIntersections.length === 0) { camera.position.y += (playerHeight - playerCrouchHeight); isCrouching = false; } } } const speed = (isCrouching ? crouchSpeed : moveSpeed); if (moveDirection.lengthSq() > 0) { moveDirection.normalize(); const worldMoveDirection = moveDirection.clone().applyQuaternion(camera.quaternion); camera.position.x += worldMoveDirection.x * speed * deltaTime; camera.position.z += worldMoveDirection.z * speed * deltaTime; } const currentHeight = isCrouching ? playerCrouchHeight : playerHeight; const downRaycaster = new THREE.Raycaster(camera.position, new THREE.Vector3(0, -1, 0), 0, currentHeight + 0.2); const groundIntersections = downRaycaster.intersectObjects([...collidables, ...stageObjects.filter(o => o.geometry && o.geometry.type === 'PlaneGeometry')]); playerOnFloor = groundIntersections.length > 0; if (playerOnFloor) { const groundY = groundIntersections[0].point.y; if (playerVelocity.y <= 0) { playerVelocity.y = 0; camera.position.y = groundY + currentHeight; } } else { playerVelocity.y -= gravity * deltaTime; } if (keys['Space'] && playerOnFloor) { playerVelocity.y = jumpForce; playerOnFloor = false; } camera.position.y += playerVelocity.y * deltaTime; const playerBox = new THREE.Box3().setFromCenterAndSize(camera.position, new THREE.Vector3(playerRadius*2, currentHeight, playerRadius*2)); playerBox.min.y = camera.position.y - currentHeight; playerBox.max.y = camera.position.y; collidables.forEach(collidable => { const collidableBox = new THREE.Box3().setFromObject(collidable); if (playerBox.intersectsBox(collidableBox)) { const center = new THREE.Vector3(); playerBox.getCenter(center); const collidableCenter = new THREE.Vector3(); collidableBox.getCenter(collidableCenter); const overlap = new THREE.Vector3().subVectors(center, collidableCenter); const halfSizePlayer = new THREE.Vector3(); playerBox.getSize(halfSizePlayer).multiplyScalar(0.5); const halfSizeCollidable = new THREE.Vector3(); collidableBox.getSize(halfSizeCollidable).multiplyScalar(0.5); const penetration = new THREE.Vector3((halfSizePlayer.x + halfSizeCollidable.x) - Math.abs(overlap.x), (halfSizePlayer.y + halfSizeCollidable.y) - Math.abs(overlap.y), (halfSizePlayer.z + halfSizeCollidable.z) - Math.abs(overlap.z)); if (penetration.x < penetration.z && penetration.x < penetration.y) { camera.position.x += penetration.x * Math.sign(overlap.x); } else if (penetration.z < penetration.y) { camera.position.z += penetration.z * Math.sign(overlap.z); } else { if (playerVelocity.y > 0 && overlap.y < 0) { playerVelocity.y = 0; } camera.position.y += penetration.y * Math.sign(overlap.y); } } }); }
+        function updatePlayer(deltaTime) { 
+            const moveDirection = new THREE.Vector3(); 
+            // Movement restriction for stage 4
+            if (currentStage === 4) {
+                if (keys['KeyA']) moveDirection.x = -1; 
+                if (keys['KeyD']) moveDirection.x = 1;
+            } else {
+                if (keys['KeyW']) moveDirection.z = -1; 
+                if (keys['KeyS']) moveDirection.z = 1; 
+                if (keys['KeyA']) moveDirection.x = -1; 
+                if (keys['KeyD']) moveDirection.x = 1;
+            }
+
+            if (!hasPlayerMoved && moveDirection.lengthSq() > 0) { hasPlayerMoved = true; if (currentStage >= 15 && currentStage <= 17) { minimapContainer.style.display = 'none'; } } if (!canPlayerMove) return; const wantsToCrouch = (keys['ShiftLeft'] || keys['ShiftRight']); if (wantsToCrouch) { if (!isCrouching && playerOnFloor) { camera.position.y -= (playerHeight - playerCrouchHeight); } isCrouching = true; } else { if (isCrouching) { const upRaycaster = new THREE.Raycaster(camera.position, new THREE.Vector3(0, 1, 0), 0, playerHeight - playerCrouchHeight + 0.1); const ceilingIntersections = upRaycaster.intersectObjects(collidables); if (ceilingIntersections.length === 0) { camera.position.y += (playerHeight - playerCrouchHeight); isCrouching = false; } } } const speed = (isCrouching ? crouchSpeed : moveSpeed); if (moveDirection.lengthSq() > 0) { moveDirection.normalize(); const worldMoveDirection = moveDirection.clone().applyQuaternion(camera.quaternion); camera.position.x += worldMoveDirection.x * speed * deltaTime; camera.position.z += worldMoveDirection.z * speed * deltaTime; } const currentHeight = isCrouching ? playerCrouchHeight : playerHeight; const downRaycaster = new THREE.Raycaster(camera.position, new THREE.Vector3(0, -1, 0), 0, currentHeight + 0.2); const groundIntersections = downRaycaster.intersectObjects([...collidables, ...stageObjects.filter(o => o.geometry && o.geometry.type === 'PlaneGeometry')]); playerOnFloor = groundIntersections.length > 0; if (playerOnFloor) { const groundY = groundIntersections[0].point.y; if (playerVelocity.y <= 0) { playerVelocity.y = 0; camera.position.y = groundY + currentHeight; } } else { playerVelocity.y -= gravity * deltaTime; } if (keys['Space'] && playerOnFloor) { playerVelocity.y = jumpForce; playerOnFloor = false; } camera.position.y += playerVelocity.y * deltaTime; const playerBox = new THREE.Box3().setFromCenterAndSize(camera.position, new THREE.Vector3(playerRadius*2, currentHeight, playerRadius*2)); playerBox.min.y = camera.position.y - currentHeight; playerBox.max.y = camera.position.y; collidables.forEach(collidable => { const collidableBox = new THREE.Box3().setFromObject(collidable); if (playerBox.intersectsBox(collidableBox)) { const center = new THREE.Vector3(); playerBox.getCenter(center); const collidableCenter = new THREE.Vector3(); collidableBox.getCenter(collidableCenter); const overlap = new THREE.Vector3().subVectors(center, collidableCenter); const halfSizePlayer = new THREE.Vector3(); playerBox.getSize(halfSizePlayer).multiplyScalar(0.5); const halfSizeCollidable = new THREE.Vector3(); collidableBox.getSize(halfSizeCollidable).multiplyScalar(0.5); const penetration = new THREE.Vector3((halfSizePlayer.x + halfSizeCollidable.x) - Math.abs(overlap.x), (halfSizePlayer.y + halfSizeCollidable.y) - Math.abs(overlap.y), (halfSizePlayer.z + halfSizeCollidable.z) - Math.abs(overlap.z)); if (penetration.x < penetration.z && penetration.x < penetration.y) { camera.position.x += penetration.x * Math.sign(overlap.x); } else if (penetration.z < penetration.y) { camera.position.z += penetration.z * Math.sign(overlap.z); } else { if (playerVelocity.y > 0 && overlap.y < 0) { playerVelocity.y = 0; } camera.position.y += penetration.y * Math.sign(overlap.y); } } }); }
         function updateNPC(npc, deltaTime) { const fleeVector = new THREE.Vector3().subVectors(npc.position, camera.position); fleeVector.y = 0; fleeVector.normalize(); const avoidanceVector = new THREE.Vector3(); const feelerLength = 2.0; let npcDirection = npc.velocity.clone().normalize(); if(npcDirection.lengthSq() === 0) { npc.getWorldDirection(npcDirection); npcDirection.y = 0; npcDirection.normalize(); } const wallRaycaster = new THREE.Raycaster(npc.position, npcDirection); const intersections = wallRaycaster.intersectObjects(collidables); if (intersections.length > 0 && intersections[0].distance < feelerLength) { const wallNormal = intersections[0].face.normal.clone(); avoidanceVector.copy(npcDirection).reflect(wallNormal).multiplyScalar(1.5); } let steeringDirection = fleeVector.add(avoidanceVector); if (steeringDirection.lengthSq() === 0) { steeringDirection.set(Math.random() - 0.5, 0, Math.random() - 0.5); } steeringDirection.normalize(); if (Math.random() > 0.98) { const randomAngle = (Math.random() - 0.5) * Math.PI; steeringDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), randomAngle); } npc.velocity.lerp(steeringDirection, 0.05); const moveStep = npc.velocity.clone().normalize().multiplyScalar(moveSpeed * 0.8 * deltaTime); const nextPos = npc.position.clone().add(moveStep); const moveDistance = moveStep.length(); const collisionRaycaster = new THREE.Raycaster(npc.position, moveStep.clone().normalize()); const collisionIntersections = collisionRaycaster.intersectObjects(collidables); if (collisionIntersections.length === 0 || collisionIntersections[0].distance > moveDistance + 1.5) { npc.position.copy(nextPos); } else { const wallNormal = collisionIntersections[0].face.normal.clone(); npc.velocity.reflect(wallNormal); } npc.position.y = 0.9; }
         function updateKeyDisplay() { keyW.classList.toggle('key-active', !!keys['KeyW']); keyA.classList.toggle('key-active', !!keys['KeyA']); keyS.classList.toggle('key-active', !!keys['KeyS']); keyD.classList.toggle('key-active', !!keys['KeyD']); keySpace.classList.toggle('key-active', !!keys['Space']); keyShift.classList.toggle('key-active', !!(keys['ShiftLeft'] || keys['ShiftRight'])); }
         function updateNpcCounter() { const total = scene.userData.totalNpcs || 0; const remaining = npcs.length; npcCounterElement.innerHTML = `已捕捉 / Caught: ${total - remaining} / ${total}`; }
