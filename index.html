@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>第一人称操作教学 (V15.8 - 柱子美化)</title>
+    <title>第一人称操作教学 (V15.12 - 按钮尾迹优化)</title>
     <style>
         body {
             margin: 0;
@@ -108,7 +108,7 @@
             color: black;
             transform: scale(0.95);
         }
-        #npc-counter, #landmark-counter, #generic-counter {
+        #npc-counter, #landmark-counter, #generic-counter, #map-uses-counter {
             position: absolute;
             top: 100px;
             left: 20px;
@@ -118,6 +118,8 @@
             text-shadow: 2px 2px 4px #000;
             display: none;
         }
+        #landmark-counter { top: 100px; }
+        #map-uses-counter { top: 140px; font-size: 20px; color: #ffdd57; }
         #timer, #warmup-timer-display {
             position: absolute;
             top: 20px;
@@ -588,6 +590,7 @@
     <div id="npc-counter"></div>
     <div id="landmark-counter"></div>
     <div id="generic-counter"></div>
+    <div id="map-uses-counter"></div>
 
     <div id="key-display">
         <div class="key-row">
@@ -661,7 +664,7 @@
         const TOTAL_LEVELS = 20;
 
         // --- UI Elements ---
-        let instructionElement, blockerElement, crosshairElement, npcCounterElement, landmarkCounterElement, genericCounterElement;
+        let instructionElement, blockerElement, crosshairElement, npcCounterElement, landmarkCounterElement, genericCounterElement, mapUsesCounterElement;
         let menuOverlay, levelSelectMenu, modeSelectionScreen, playerInfoElement;
         let keyDisplay, keyW, keyA, keyS, keyD, keySpace, keyShift;
         let narrationBox, resultsOverlay, trainingChoiceOverlay, trainingCommandElement, resetConfirmOverlay;
@@ -686,6 +689,7 @@
         // --- Shuttle Run Variables ---
         let shuttleRunState = {};
         let shuttleRunMaterials = {};
+        let trailParticles = []; // NEW: Array for trail particles
 
         // --- Mission Corridor Variables ---
         let corridorState = {};
@@ -714,6 +718,7 @@
         let minimapContainer, minimap, minimapCtx;
         let firework3DParticles = [];
         let fireworksInterval = null;
+        let minimapUsesLeft = 8; 
         
         // --- Warmup Countdown Variables ---
         let warmupCountdownInterval = null;
@@ -745,6 +750,7 @@
             npcCounterElement = document.getElementById('npc-counter');
             landmarkCounterElement = document.getElementById('landmark-counter');
             genericCounterElement = document.getElementById('generic-counter');
+            mapUsesCounterElement = document.getElementById('map-uses-counter'); 
             menuOverlay = document.getElementById('menu-overlay');
             levelSelectMenu = document.getElementById('level-select-menu');
             modeSelectionScreen = document.getElementById('mode-selection');
@@ -1085,9 +1091,8 @@
             
             if (toyGun) toyGun.visible = (stageIndex === 0);
             
-            // Clear animatedObjects but be careful not to clear things that are re-used
             animatedObjects.forEach(obj => {
-                if (obj.userData.animation) { // Custom check for animated rings
+                if (obj.userData.animation) { 
                     obj.geometry.dispose();
                     obj.material.dispose();
                 }
@@ -1097,6 +1102,7 @@
             bullets.forEach(b => scene.remove(b));
             bulletHoles.forEach(h => h.mesh.parent.remove(h.mesh));
             firework3DParticles.forEach(p => scene.remove(p.mesh));
+            trailParticles.forEach(p => scene.remove(p.mesh)); // NEW: Clear trails
             
             const childrenToRemove = scene.children.filter(child => child !== camera);
             childrenToRemove.forEach(child => scene.remove(child));
@@ -1111,7 +1117,7 @@
             scene.add(dirLight);
 
             stageObjects = []; collidables = []; npcs = []; landmarks = [];
-            bullets = []; bulletHoles = []; firework3DParticles = [];
+            bullets = []; bulletHoles = []; firework3DParticles = []; trailParticles = []; // NEW: Reset trails array
             stage1Targets = []; aimedTargets.clear();
             shuttleRunState = {}; corridorState = {}; corridorTargets = []; activatedCorridorTargets.clear();
             wasdTrainingKeys = []; 
@@ -1124,6 +1130,7 @@
             npcCounterElement.style.display = 'none';
             landmarkCounterElement.style.display = 'none';
             genericCounterElement.style.display = 'none';
+            mapUsesCounterElement.style.display = 'none'; 
             scene.userData = {}; 
             
             const isMinimapVisible = (currentStage === 7 || (currentStage >= 10 && currentStage <= 19));
@@ -1245,7 +1252,7 @@
                     case 9: text = `${greeting}技巧挑战！<br>请综合运用**跳跃**和**蹲下(Shift)**穿过前方的障碍通道，抵达终点的**小红旗**。<br><br><span style="${enStyle}">Skill Challenge!<br>Use both **jumping** and **crouching (Shift)** to get to the **red flag**.</span>`; break;
                     case 10: case 11: case 12: case 13: text = `${greeting}计时挑战 ${currentStage - 9}！<br>穿越这个迷宫，用最快的速度抵达终点！<br><br><span style="${enStyle}">Timed Challenge ${currentStage - 9}!<br>Get through this maze to the finish line as fast as you can!</span>`; break;
                     case 14: case 15: case 16: text = `${greeting}追逐挑战 ${currentStage - 13}！<br>迷宫里出现了NPC！**在它们跑掉前捉住它们**！<br><br><span style="${enStyle}">Chase Challenge ${currentStage - 13}!<br>NPCs have appeared in the maze! **Catch them**!</span>`; break;
-                    case 17: case 18: case 19: text = `${greeting}地标寻路 ${currentStage - 16}！<br>请按顺序找到所有地标！<br>移动后小地图会消失，**长按E键**可暂停并查看地图。<br><br><span style="${enStyle}">Landmark Hunt ${currentStage - 16}!<br>Find all landmarks in order!<br>Minimap disappears on move. **Hold E** to pause and view map.</span>`; break;
+                    case 17: case 18: case 19: text = `${greeting}地标寻路 ${currentStage - 16}！<br>请按顺序找到所有地标！<br>移动后小地图会消失，按 **E键** 可暂停并查看地图（有次数限制）。<br><br><span style="${enStyle}">Landmark Hunt ${currentStage - 16}!<br>Find all landmarks in order!<br>Minimap disappears on move. Press **E** to pause and view map (limited uses).</span>`; break;
                     case 20: text = ``; break;
                     default: text = `点击鼠标左键开始<br><span style="font-size:12px;">Left Click to Start</span>`; break;
                 }
@@ -1289,6 +1296,7 @@
             updateBullets(deltaTime);
             updateBulletHoles(deltaTime);
             update3DFireworks(deltaTime);
+            updateTrailParticles(deltaTime); // NEW: Update trails
 
             if (isTimerRunning) { const elapsedTime = clock.getElapsedTime() - levelStartTime; timerElement.textContent = elapsedTime.toFixed(2) + 's'; }
             
@@ -1413,14 +1421,28 @@
         }
 
         function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
+        
         function onKeyDown(event) {
             keys[event.code] = true;
-            if (event.code === 'Escape') { if (document.pointerLockElement === document.body) document.exitPointerLock(); }
+            if (event.code === 'Escape') { 
+                if (document.pointerLockElement === document.body) document.exitPointerLock();
+            }
             if (event.code === 'KeyE' && (currentStage >= 17 && currentStage <= 19)) {
-                canPlayerMove = false;
-                minimapContainer.style.display = 'block';
+                if (minimapUsesLeft > 0) {
+                    if (minimapContainer.style.display === 'none') { // Only decrement when opening the map
+                        minimapUsesLeft--;
+                        updateMapUsesCounter();
+                    }
+                    canPlayerMove = false;
+                    minimapContainer.style.display = 'block';
+                } else {
+                    if (minimapContainer.style.display === 'none') { // Show message only once
+                         showNarration('地图使用次数已用完！<br>No map uses left!');
+                    }
+                }
             }
         }
+
         function onKeyUp(event) {
             keys[event.code] = false;
             if (event.code === 'KeyE' && (currentStage >= 17 && currentStage <= 19)) {
@@ -1674,6 +1696,7 @@
                 button.castShadow = true;
                 if (isMoving) {
                     button.velocity = new THREE.Vector3((Math.random() - 0.5), 0, (Math.random() - 0.5)).normalize().multiplyScalar(speed);
+                    button.userData.trailTimer = 0; 
                 }
                 scene.add(button);
                 stageObjects.push(button);
@@ -1759,12 +1782,16 @@
         function setupStage4_ShuttleRun_Moving() { setupShuttleRunLevel(true, 2.5); }
         function setupStage5_ShuttleRun_HighSpeed() { setupShuttleRunLevel(true, 5.0); }
 
+        // MODIFIED: updateShuttleRunTargets to generate trails only for the active target
         function updateShuttleRunTargets(deltaTime) {
             if (!shuttleRunState.targets) return;
             const radius = shuttleRunState.spawnRadius;
             shuttleRunState.targets.forEach(target => {
                 if (target.velocity) {
+                    // Move target
                     target.position.add(target.velocity.clone().multiplyScalar(deltaTime));
+                    
+                    // Bounce off walls
                     if (target.position.x > radius || target.position.x < -radius) {
                         target.velocity.x *= -1;
                         target.position.x = Math.sign(target.position.x) * radius;
@@ -1772,6 +1799,15 @@
                     if (target.position.z > radius || target.position.z < -radius) {
                         target.velocity.z *= -1;
                         target.position.z = Math.sign(target.position.z) * radius;
+                    }
+
+                    // Generate trail ONLY for the active (red) target
+                    if (target === shuttleRunState.activeTarget) {
+                        target.userData.trailTimer += deltaTime;
+                        if (target.userData.trailTimer > 0.05) {
+                            target.userData.trailTimer = 0;
+                            createTrailParticle(target.position);
+                        }
                     }
                 }
             });
@@ -2033,6 +2069,10 @@
             nextLandmarkIndex = 0;
             landmarkCounterElement.style.display = 'block';
             updateLandmarkCounter();
+            
+            minimapUsesLeft = 8;
+            mapUsesCounterElement.style.display = 'block';
+            updateMapUsesCounter();
         }
         
         function setupStage10_Timed0() { const layout = [['S', 0, 1, 0, 0], [1, 0, 1, 0, 1], [0, 0, 0, 0, 0], [0, 1, 1, 1, 0], [0, 0, 0, 0, 'E']]; setupTimedMazeLevel(layout); }
@@ -2240,6 +2280,10 @@
         function updateLandmarkCounter() { landmarkCounterElement.innerHTML = `已找到 / Found: ${nextLandmarkIndex} / ${landmarks.length}`; }
         function updateGenericCounter(text) { genericCounterElement.innerHTML = text; }
         
+        function updateMapUsesCounter() {
+            mapUsesCounterElement.innerHTML = `地图剩余次数: ${minimapUsesLeft}<br><span style="font-size:14px; color: #ccc;">Map Uses Left: ${minimapUsesLeft}</span>`;
+        }
+
         function handleWarmupNarration() {
             if (narrationBox.style.display === 'block') return;
             raycaster.setFromCamera(centerScreen, camera);
@@ -2263,6 +2307,13 @@
         function showNarration(text) {
             narrationBox.innerHTML = text;
             narrationBox.style.display = 'block';
+            if (!text.toLowerCase().includes('cancel')) {
+                setTimeout(() => {
+                    if (narrationBox.innerHTML === text) { 
+                        narrationBox.style.display = 'none';
+                    }
+                }, 4000);
+            }
         }
 
         function create3DFirework(position) {
@@ -2292,6 +2343,37 @@
                     p.velocity.y -= 9.8 * deltaTime;
                     p.mesh.position.add(p.velocity.clone().multiplyScalar(deltaTime));
                     p.mesh.material.opacity = p.life / p.initialLife;
+                }
+            }
+        }
+
+        // MODIFIED: createTrailParticle to use yellow color
+        function createTrailParticle(position) {
+            const trailGeo = new THREE.CircleGeometry(0.8, 16);
+            const trailMat = new THREE.MeshBasicMaterial({ 
+                color: 0xffff00, // Changed to yellow
+                transparent: true, 
+                opacity: 0.6 
+            });
+            const particle = new THREE.Mesh(trailGeo, trailMat);
+            particle.position.copy(position);
+            particle.position.y = 0.01; // Slightly above the floor
+            particle.rotation.x = -Math.PI / 2;
+            scene.add(particle);
+            trailParticles.push({ mesh: particle, life: 3.0, initialLife: 3.0 });
+        }
+
+        function updateTrailParticles(deltaTime) {
+            for (let i = trailParticles.length - 1; i >= 0; i--) {
+                const p = trailParticles[i];
+                p.life -= deltaTime;
+                if (p.life <= 0) {
+                    scene.remove(p.mesh);
+                    p.mesh.geometry.dispose();
+                    p.mesh.material.dispose();
+                    trailParticles.splice(i, 1);
+                } else {
+                    p.mesh.material.opacity = (p.life / p.initialLife) * 0.6;
                 }
             }
         }
