@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>第一人称操作教学 (V15.12 - 按钮尾迹优化)</title>
+    <title>第一人称操作教学 (V15.13 - 场景美化)</title>
     <style>
         body {
             margin: 0;
@@ -689,7 +689,7 @@
         // --- Shuttle Run Variables ---
         let shuttleRunState = {};
         let shuttleRunMaterials = {};
-        let trailParticles = []; // NEW: Array for trail particles
+        let trailParticles = []; 
 
         // --- Mission Corridor Variables ---
         let corridorState = {};
@@ -700,8 +700,8 @@
         let wasdTrainingKeys = [];
         let wasdCenterButton = null;
         let wasdTrainingActivated = false;
-        let wasdTrainingMode = null; // null, 'special', 'free'
-        let currentTrainingKey = null; // 'W', 'A', 'S', 'D'
+        let wasdTrainingMode = null; 
+        let currentTrainingKey = null; 
         let isWaitingForNextCommand = false;
 
         // --- Shooting System Variables ---
@@ -1102,7 +1102,7 @@
             bullets.forEach(b => scene.remove(b));
             bulletHoles.forEach(h => h.mesh.parent.remove(h.mesh));
             firework3DParticles.forEach(p => scene.remove(p.mesh));
-            trailParticles.forEach(p => scene.remove(p.mesh)); // NEW: Clear trails
+            trailParticles.forEach(p => scene.remove(p.mesh)); 
             
             const childrenToRemove = scene.children.filter(child => child !== camera);
             childrenToRemove.forEach(child => scene.remove(child));
@@ -1117,7 +1117,7 @@
             scene.add(dirLight);
 
             stageObjects = []; collidables = []; npcs = []; landmarks = [];
-            bullets = []; bulletHoles = []; firework3DParticles = []; trailParticles = []; // NEW: Reset trails array
+            bullets = []; bulletHoles = []; firework3DParticles = []; trailParticles = []; 
             stage1Targets = []; aimedTargets.clear();
             shuttleRunState = {}; corridorState = {}; corridorTargets = []; activatedCorridorTargets.clear();
             wasdTrainingKeys = []; 
@@ -1296,7 +1296,7 @@
             updateBullets(deltaTime);
             updateBulletHoles(deltaTime);
             update3DFireworks(deltaTime);
-            updateTrailParticles(deltaTime); // NEW: Update trails
+            updateTrailParticles(deltaTime); 
 
             if (isTimerRunning) { const elapsedTime = clock.getElapsedTime() - levelStartTime; timerElement.textContent = elapsedTime.toFixed(2) + 's'; }
             
@@ -1429,14 +1429,14 @@
             }
             if (event.code === 'KeyE' && (currentStage >= 17 && currentStage <= 19)) {
                 if (minimapUsesLeft > 0) {
-                    if (minimapContainer.style.display === 'none') { // Only decrement when opening the map
+                    if (minimapContainer.style.display === 'none') { 
                         minimapUsesLeft--;
                         updateMapUsesCounter();
                     }
                     canPlayerMove = false;
                     minimapContainer.style.display = 'block';
                 } else {
-                    if (minimapContainer.style.display === 'none') { // Show message only once
+                    if (minimapContainer.style.display === 'none') { 
                          showNarration('地图使用次数已用完！<br>No map uses left!');
                     }
                 }
@@ -1664,6 +1664,7 @@
         function setupStage1_Look() { camera.position.set(0, playerHeight, 5); camera.quaternion.set(0, 0, 0, 1); euler.set(0, 0, 0, 'YXZ'); createFloor(20, 20); createWall(0, 2.5, -10, 20, 5, 0.2); createWall(0, 2.5, 10, 20, 5, 0.2); createWall(-10, 2.5, 0, 0.2, 5, 20); createWall(10, 2.5, 0, 0.2, 5, 20); const targetPositions = [new THREE.Vector3(0, 1.5, -8), new THREE.Vector3(8, 2, 0), new THREE.Vector3(-7, 1, 3), new THREE.Vector3(0, 3, 8)]; targetPositions.forEach(pos => { const targetGeo = new THREE.SphereGeometry(0.5, 32, 32); const targetMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x550000 }); const target = new THREE.Mesh(targetGeo, targetMat); target.position.copy(pos); target.userData.isTarget = true; scene.add(target); stageObjects.push(target); stage1Targets.push(target); }); updateInstructions(); }
         function setupStage2_Forward() { camera.position.set(0, playerHeight, 18); camera.quaternion.set(0, 0, 0, 1); euler.set(0, 0, 0, 'YXZ'); createFloor(10, 40); createWall(-5, 2.5, 0, 0.2, 5, 40); createWall(5, 2.5, 0, 0.2, 5, 40); createWall(0, 2.5, 20, 10, 5, 0.2); createWall(0, 2.5, -20, 10, 5, 0.2); createFinishFlag(0, 0, -19); }
         
+        // MODIFIED: setupShuttleRunLevel to include textured walls
         function setupShuttleRunLevel(isMoving, speed) {
             camera.position.set(0, playerHeight, 0);
             camera.quaternion.set(0, 0, 0, 1);
@@ -1675,7 +1676,8 @@
             const mapSize = 80;
             createFloor(mapSize, mapSize);
             createPillarsForShuttleRun(20, mapSize / 2 - 5);
-            
+            createShuttleRunWalls(mapSize); // NEW: Create textured walls
+
             shuttleRunMaterials = {
                 green: new THREE.MeshStandardMaterial({ color: 0x00ff00, emissive: 0x005500 }),
                 red: new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x880000 }),
@@ -1683,7 +1685,7 @@
             };
 
             const targets = [];
-            const spawnRadius = mapSize / 2 - 5;
+            const spawnRadius = mapSize / 2 - 10; // Adjusted radius to avoid spawning inside walls
             for (let i = 0; i < 10; i++) {
                 const angle = Math.random() * Math.PI * 2;
                 const radius = 5 + Math.random() * (spawnRadius - 5);
@@ -1717,25 +1719,134 @@
             activateNextShuttleTarget();
         }
 
+        // NEW: Function to create textured walls for shuttle run
+        function createShuttleRunWalls(mapSize) {
+            const wallHeight = 20;
+
+            // --- Texture Generation Functions ---
+            function createBrickTexture() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 128; canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#a1664f'; ctx.fillRect(0, 0, 128, 128);
+                ctx.strokeStyle = '#7a4c3b'; ctx.lineWidth = 2;
+                for (let i = 0; i < 8; i++) {
+                    ctx.beginPath(); ctx.moveTo(0, i * 16); ctx.lineTo(128, i * 16); ctx.stroke();
+                    for (let j = 0; j < 4; j++) {
+                        const x = (i % 2 === 0) ? j * 32 : j * 32 + 16;
+                        ctx.beginPath(); ctx.moveTo(x, i * 16); ctx.lineTo(x, (i + 1) * 16); ctx.stroke();
+                    }
+                }
+                return new THREE.CanvasTexture(canvas);
+            }
+
+            function createStoneTexture() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 256; canvas.height = 256;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#888'; ctx.fillRect(0, 0, 256, 256);
+                for (let i = 0; i < 60; i++) {
+                    const x = Math.random() * 256; const y = Math.random() * 256;
+                    const rX = Math.random() * 20 + 15; const rY = Math.random() * 20 + 15;
+                    const color = Math.floor(Math.random() * 40) + 90;
+                    ctx.fillStyle = `rgb(${color},${color},${color})`;
+                    ctx.beginPath(); ctx.ellipse(x, y, rX, rY, Math.random() * Math.PI, 0, 2 * Math.PI); ctx.fill();
+                }
+                return new THREE.CanvasTexture(canvas);
+            }
+
+            function createMetalTexture() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 256; canvas.height = 256;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#4a4a52'; ctx.fillRect(0, 0, 256, 256);
+                ctx.strokeStyle = '#686870'; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.moveTo(128, 0); ctx.lineTo(128, 256); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, 128); ctx.lineTo(256, 128); ctx.stroke();
+                ctx.fillStyle = '#787880';
+                for (let i = 0; i < 4; i++) {
+                    const cornerX = (i % 2) * 128; const cornerY = Math.floor(i / 2) * 128;
+                    ctx.beginPath(); ctx.arc(cornerX + 8, cornerY + 8, 3, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cornerX + 120, cornerY + 8, 3, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cornerX + 8, cornerY + 120, 3, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cornerX + 120, cornerY + 120, 3, 0, Math.PI * 2); ctx.fill();
+                }
+                return new THREE.CanvasTexture(canvas);
+            }
+
+            function createWoodTexture() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 128; canvas.height = 512;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#8B5A2B'; ctx.fillRect(0, 0, 128, 512);
+                ctx.strokeStyle = '#5A3A1B'; ctx.lineWidth = 2;
+                for (let i = 0; i < 20; i++) {
+                    ctx.beginPath();
+                    const x = Math.random() * 128; const y = Math.random() * 512;
+                    const length = Math.random() * 150 + 50;
+                    ctx.moveTo(x, y);
+                    ctx.bezierCurveTo(x + Math.random() * 30 - 15, y + length * 0.3, x + Math.random() * 30 - 15, y + length * 0.7, x + Math.random() * 10 - 5, y + length);
+                    ctx.stroke();
+                }
+                return new THREE.CanvasTexture(canvas);
+            }
+
+            const textures = [createBrickTexture(), createStoneTexture(), createMetalTexture(), createWoodTexture()];
+            const materials = [];
+
+            textures.forEach(tex => {
+                tex.wrapS = THREE.RepeatWrapping;
+                tex.wrapT = THREE.RepeatWrapping;
+                tex.repeat.set(mapSize / 10, wallHeight / 10);
+                materials.push(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, metalness: tex === textures[2] ? 0.6 : 0.1 }));
+            });
+
+            const wallGeo = new THREE.PlaneGeometry(mapSize, wallHeight);
+            
+            // Wall 1 (Back)
+            const wall1 = new THREE.Mesh(wallGeo, materials[0]);
+            wall1.position.set(0, wallHeight / 2, -mapSize / 2);
+            scene.add(wall1);
+            collidables.push(wall1);
+
+            // Wall 2 (Front)
+            const wall2 = new THREE.Mesh(wallGeo, materials[1]);
+            wall2.position.set(0, wallHeight / 2, mapSize / 2);
+            wall2.rotation.y = Math.PI;
+            scene.add(wall2);
+            collidables.push(wall2);
+            
+            // Wall 3 (Right)
+            const wall3 = new THREE.Mesh(wallGeo, materials[2]);
+            wall3.position.set(mapSize / 2, wallHeight / 2, 0);
+            wall3.rotation.y = -Math.PI / 2;
+            scene.add(wall3);
+            collidables.push(wall3);
+
+            // Wall 4 (Left)
+            const wall4 = new THREE.Mesh(wallGeo, materials[3]);
+            wall4.position.set(-mapSize / 2, wallHeight / 2, 0);
+            wall4.rotation.y = Math.PI / 2;
+            scene.add(wall4);
+            collidables.push(wall4);
+        }
+
         function createPillarsForShuttleRun(count, radius) {
             for(let i = 0; i < count; i++) {
                 const pillarGroup = new THREE.Group();
 
-                // Base
                 const baseGeo = new THREE.CylinderGeometry(0.8, 1, 0.5, 16);
                 const baseMat = new THREE.MeshStandardMaterial({ color: 0x333344, metalness: 0.8, roughness: 0.3 });
                 const base = new THREE.Mesh(baseGeo, baseMat);
                 base.position.y = 0.25;
                 pillarGroup.add(base);
 
-                // Main Body
                 const bodyGeo = new THREE.CylinderGeometry(0.5, 0.7, 8, 16);
                 const bodyMat = new THREE.MeshStandardMaterial({ color: 0x777788, metalness: 0.6, roughness: 0.5 });
                 const body = new THREE.Mesh(bodyGeo, bodyMat);
-                body.position.y = 4.5; // 0.5 (base height) + 8/2
+                body.position.y = 4.5; 
                 pillarGroup.add(body);
 
-                // Top Emissive Part
                 const topGeo = new THREE.IcosahedronGeometry(0.6, 0);
                 const topMat = new THREE.MeshStandardMaterial({ 
                     color: 0x00ffff, 
@@ -1745,20 +1856,18 @@
                     roughness: 0.1
                 });
                 const top = new THREE.Mesh(topGeo, topMat);
-                top.position.y = 9; // 0.5 + 8 + 0.5
+                top.position.y = 9; 
                 pillarGroup.add(top);
                 
-                // Add an animated ring
                 const ringGeo = new THREE.TorusGeometry(0.8, 0.05, 8, 32);
                 const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true });
                 const ring = new THREE.Mesh(ringGeo, ringMat);
                 ring.rotation.x = Math.PI / 2;
-                ring.position.y = 1; // Start position
+                ring.position.y = 1; 
                 pillarGroup.add(ring);
                 
-                // Custom animation data for the ring
                 ring.userData.animation = (time) => {
-                    ring.position.y = 1 + (Math.sin(time * 2 + i) + 1) / 2 * 7; // Animate between y=1 and y=8
+                    ring.position.y = 1 + (Math.sin(time * 2 + i) + 1) / 2 * 7; 
                     ring.material.opacity = 0.5 + (Math.sin(time * 2 + i) + 1) / 4;
                 };
                 animatedObjects.push(ring);
@@ -1774,7 +1883,7 @@
                 
                 scene.add(pillarGroup);
                 stageObjects.push(pillarGroup);
-                collidables.push(body); // Only the main body is for collision
+                collidables.push(body); 
             }
         }
 
@@ -1782,16 +1891,13 @@
         function setupStage4_ShuttleRun_Moving() { setupShuttleRunLevel(true, 2.5); }
         function setupStage5_ShuttleRun_HighSpeed() { setupShuttleRunLevel(true, 5.0); }
 
-        // MODIFIED: updateShuttleRunTargets to generate trails only for the active target
         function updateShuttleRunTargets(deltaTime) {
             if (!shuttleRunState.targets) return;
             const radius = shuttleRunState.spawnRadius;
             shuttleRunState.targets.forEach(target => {
                 if (target.velocity) {
-                    // Move target
                     target.position.add(target.velocity.clone().multiplyScalar(deltaTime));
                     
-                    // Bounce off walls
                     if (target.position.x > radius || target.position.x < -radius) {
                         target.velocity.x *= -1;
                         target.position.x = Math.sign(target.position.x) * radius;
@@ -1801,7 +1907,6 @@
                         target.position.z = Math.sign(target.position.z) * radius;
                     }
 
-                    // Generate trail ONLY for the active (red) target
                     if (target === shuttleRunState.activeTarget) {
                         target.userData.trailTimer += deltaTime;
                         if (target.userData.trailTimer > 0.05) {
@@ -2263,7 +2368,7 @@
         function handleAiming() { raycaster.setFromCamera(centerScreen, camera); const intersects = raycaster.intersectObjects(stage1Targets); if (intersects.length > 0) { const aimedObject = intersects[0].object; if (aimedObject.userData.isTarget && !aimedTargets.has(aimedObject)) { aimedObject.material.emissive.setHex(0x00ff00); aimedTargets.add(aimedObject); updateInstructions(); } } }
         function updatePlayer(deltaTime) { 
             const moveDirection = new THREE.Vector3(); 
-            if (currentStage === 6) { // Mission Corridor
+            if (currentStage === 6) { 
                 if (keys['KeyA']) moveDirection.x = -1; 
                 if (keys['KeyD']) moveDirection.x = 1;
             } else {
@@ -2347,17 +2452,16 @@
             }
         }
 
-        // MODIFIED: createTrailParticle to use yellow color
         function createTrailParticle(position) {
             const trailGeo = new THREE.CircleGeometry(0.8, 16);
             const trailMat = new THREE.MeshBasicMaterial({ 
-                color: 0xffff00, // Changed to yellow
+                color: 0xffff00, 
                 transparent: true, 
                 opacity: 0.6 
             });
             const particle = new THREE.Mesh(trailGeo, trailMat);
             particle.position.copy(position);
-            particle.position.y = 0.01; // Slightly above the floor
+            particle.position.y = 0.01; 
             particle.rotation.x = -Math.PI / 2;
             scene.add(particle);
             trailParticles.push({ mesh: particle, life: 3.0, initialLife: 3.0 });
