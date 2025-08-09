@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>认知能力训练挑战 (V21.1 - 地图修正)</title>
+    <title>认知能力训练挑战 (V21.2 - 地图更新)</title>
     <style>
         body {
             margin: 0;
@@ -2051,10 +2051,11 @@
             
             const mapSize = 80;
             
-            shuttleRunFloorTexture.repeat.set(mapSize / 16, mapSize / 16);
-            shuttleRunFloorTexture.needsUpdate = true;
+            // MODIFICATION: Changed floor texture to missionCorridorFloorTexture
+            missionCorridorFloorTexture.repeat.set(mapSize / 4, mapSize / 4);
+            missionCorridorFloorTexture.needsUpdate = true;
             const floorMaterial = new THREE.MeshStandardMaterial({
-                map: shuttleRunFloorTexture,
+                map: missionCorridorFloorTexture,
                 metalness: 0,
                 roughness: 0.8
             });
