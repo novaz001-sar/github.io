@@ -719,7 +719,7 @@
         let isPlayerDead = false;
 
         // --- Reward System Variables ---
-        let playerProfile = { nickname: '', title: '' };
+        let playerProfile = { nickname: '', title: '', en_title: '' };
         let levelStars = {};
         let starTimeThresholds = {
             1: { s3: 5,   s2: 10 },   // Attention: Point Focus
@@ -972,6 +972,7 @@
                 }
                 playerProfile.nickname = nickname;
                 playerProfile.title = selectedGender === 'male' ? `${nickname} 叔叔` : `${nickname} 阿姨`;
+                playerProfile.en_title = selectedGender === 'male' ? `Uncle ${nickname}` : `Auntie ${nickname}`;
                 localStorage.setItem('playerProfile', JSON.stringify(playerProfile));
                 document.getElementById('profile-creation-overlay').style.display = 'none';
                 startGame();
@@ -1052,7 +1053,7 @@
                 localStorage.removeItem('levelTimes_campaign');
                 localStorage.removeItem('levelStars');
                 
-                playerProfile = { nickname: '', title: '' };
+                playerProfile = { nickname: '', title: '', en_title: '' };
                 unlockedLevel = 1;
                 levelTimes = {};
                 levelStars = {};
@@ -1374,14 +1375,21 @@
                     const stars = levelStars[currentStage] || 1;
                     starContainer.innerHTML = displayStars(stars);
                     continueText = (currentStage < TOTAL_LEVELS) ? "点击进入下一关 / Click for Next Level" : "点击查看最终认证 / Click for Final Results";
-                    text = `太棒了, ${playerProfile.title}！<br>训练完成！<br>用时: **${elapsedTime.toFixed(2)}** 秒<br><br><span style="${enStyle}">Great job, ${playerProfile.title}!<br>Training Complete!<br>Time: **${elapsedTime.toFixed(2)}** seconds</span><br><br><div style="${clickContinueStyle}">${continueText}</div>`;
+                    text = `太棒了, ${playerProfile.title}！<br>训练完成！<br>用时: **${elapsedTime.toFixed(2)}** 秒<br><br><span style="${enStyle}">Great job, ${playerProfile.en_title}!<br>Training Complete!<br>Time: **${elapsedTime.toFixed(2)}** seconds</span><br><br><div style="${clickContinueStyle}">${continueText}</div>`;
                 } else { 
                     recordTime(currentStage, elapsedTime);
                     continueText = "点击返回菜单 / Click to Return to Menu";
                     text = `训练完成！<br>用时: **${elapsedTime.toFixed(2)}** 秒<br><br><span style="${enStyle}">Training Complete!<br>Time: **${elapsedTime.toFixed(2)}** seconds</span><br><br><div style="${clickContinueStyle}">${continueText}</div>`;
                 }
             } else {
-                let greeting = gameMode === 'campaign' && playerProfile.title ? `你好, ${playerProfile.title}。<br><span style="${enStyle}">Hello, ${playerProfile.title}.</span><br>` : '';
+                let greeting = '';
+                if (gameMode === 'campaign' && playerProfile.title) {
+                    // This ensures profiles created before en_title was added still work.
+                    if (!playerProfile.en_title) {
+                        playerProfile.en_title = playerProfile.title.includes("叔叔") ? `Uncle ${playerProfile.nickname}` : `Auntie ${playerProfile.nickname}`;
+                    }
+                    greeting = `你好, ${playerProfile.title}。<br><span style="${enStyle}">Hello, ${playerProfile.en_title}.</span><br>`;
+                }
                 switch(currentStage) {
                     case 0: text = `欢迎来到认知热身！<br>请熟悉 **WASD** 移动, **空格** 跳跃, **Shift** 下蹲。<br>用准星瞄准靶子, **点击鼠标左键** 射击。<br>熟悉后按 **ESC** 打开菜单进入训练。<br><br><span style="${enStyle}">Welcome to Cognitive Warm-up!<br>Use **WASD** to move, **Space** to jump, and **Shift** to crouch. Aim at targets and **Left-click** to shoot.<br>Press **ESC** to open the menu when ready.</span>`; break;
                     case 1: text = `${greeting}**注意力训练：定点聚焦**<br>请用准星瞄准所有 **红色** 目标。<br>已找到: ${aimedTargets.size} / 4<br><br><span style="${enStyle}">**Attention: Point Focus**<br>Aim at all **red** targets.<br>Found: ${aimedTargets.size} / 4</span>`; break;
