@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>第一人称操作教学 (V15.16 - 墙体材质统一)</title>
+    <title>认知能力训练挑战 (V21.1 - 地图修正)</title>
     <style>
         body {
             margin: 0;
@@ -40,30 +40,67 @@
             z-index: 10;
         }
         
+        /* --- NEW: Crosshair Styles --- */
+        @keyframes crosshair-flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
         #crosshair {
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 2px; /* Smaller */
-            height: 20px; /* Smaller */
             transform: translate(-50%, -50%);
             pointer-events: none;
             display: none;
-            background-color: white; /* White center */
-            box-shadow: 0 0 0 2px red; /* Red outline */
-            border-radius: 1px;
         }
-        #crosshair::after {
+        #crosshair > div { /* Vertical bar container */
+            position: absolute;
+            transform: translate(-50%, -50%);
+        }
+        #crosshair > div::after { /* Horizontal bar */
             content: '';
             position: absolute;
-            top: 9px; /* Center it */
-            left: -9px; /* Center it */
-            width: 20px; /* Smaller */
-            height: 2px; /* Smaller */
-            background-color: white; /* White center */
-            box-shadow: 0 0 0 2px red; /* Red outline */
+        }
+
+        /* Default Style */
+        .crosshair-default > div {
+            width: 2px;
+            height: 20px;
+            background-color: white;
+            box-shadow: 0 0 0 2px red;
             border-radius: 1px;
         }
+        .crosshair-default > div::after {
+            top: 9px;
+            left: -9px;
+            width: 20px;
+            height: 2px;
+            background-color: white;
+            box-shadow: 0 0 0 2px red;
+            border-radius: 1px;
+        }
+
+        /* Turret Level Style */
+        .crosshair-turret > div {
+            width: 2px;
+            height: 16px; /* Smaller */
+            background-color: #00ff00;
+            box-shadow: 0 0 6px #00ff00, 0 0 12px #00ff00;
+            border-radius: 1px;
+            animation: crosshair-flash 1.2s ease-in-out infinite;
+        }
+        .crosshair-turret > div::after {
+            top: 7px; /* Adjusted */
+            left: -7px; /* Adjusted */
+            width: 16px; /* Smaller */
+            height: 2px;
+            background-color: #00ff00;
+            box-shadow: 0 0 6px #00ff00, 0 0 12px #00ff00;
+            border-radius: 1px;
+        }
+        /* --- End of Crosshair Styles --- */
+
 
         #blocker {
             cursor: pointer;
@@ -160,7 +197,7 @@
             cursor: pointer;
             border-radius: 12px;
             width: 280px;
-            transition: background-color 0.3s, transform 0.1s;
+            transition: background-color: 0.3s, transform 0.1s;
             flex-shrink: 0;
         }
         .menu-button:hover, .mode-button:hover {
@@ -307,7 +344,7 @@
             border: none;
             background-color: #4CAF50;
             color: white;
-            transition: background-color 0.3s;
+            transition: background-color: 0.3s;
         }
         #start-campaign-button:hover {
             background-color: #45a049;
@@ -443,7 +480,7 @@
             font-weight: bold;
             cursor: pointer;
             border-radius: 12px;
-            transition: background-color 0.3s;
+            transition: background-color: 0.3s;
         }
         #close-results-button:hover {
             background-color: #45a049;
@@ -476,12 +513,45 @@
             width: 90%;
             max-width: 450px;
         }
+        
+        #player-health-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 25px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 2px solid #888;
+            border-radius: 12px;
+            display: none;
+            z-index: 10;
+            overflow: hidden;
+        }
+        #player-health-bar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #ff416c, #ff4b2b);
+            border-radius: 8px;
+            transition: width 0.3s ease-out;
+        }
+        #player-health-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            text-shadow: 1px 1px 2px #000;
+        }
+
     </style>
 </head>
 <body>
     <div id="mode-selection" class="overlay">
-        <h1>选择游戏模式 / Select Mode</h1>
-        <button id="campaign-mode-button" class="mode-button">通关模式<br><span style="font-size:12px;">Campaign Mode</span></button>
+        <h1>选择训练模式 / Select Mode</h1>
+        <button id="campaign-mode-button" class="mode-button">生涯模式<br><span style="font-size:12px;">Campaign Mode</span></button>
         <button id="free-mode-button" class="mode-button">自由模式<br><span style="font-size:12px;">Free Mode</span></button>
     </div>
 
@@ -493,7 +563,7 @@
                 <button id="male-button" data-gender="male">我是叔叔 / I am Uncle</button>
                 <button id="female-button" data-gender="female">我是阿姨 / I am Auntie</button>
             </div>
-            <button id="start-campaign-button">开始游戏 / Start Game</button>
+            <button id="start-campaign-button">开始训练 / Start Training</button>
         </div>
     </div>
 
@@ -511,7 +581,7 @@
     
     <div id="results-overlay" class="overlay">
         <div id="results-content">
-            <h1 id="results-title">颁奖典礼 / Award Ceremony</h1>
+            <h1 id="results-title">能力认证 / Cognitive Mastery</h1>
             <p id="player-final-title"></p>
             <div id="podium-container">
                 <div id="podium-2" class="podium-step"></div>
@@ -539,10 +609,10 @@
     
     <div id="reset-confirm-overlay" class="overlay" style="display: none; z-index: 16;">
         <div id="reset-confirm-box" class="confirm-box">
-            <h2>重置游戏？ / Reset Game?</h2>
+            <h2>重置档案？ / Reset Profile?</h2>
             <p style="font-size: 16px; line-height: 1.5;">
-                您确定要清除所有游戏记录吗？此操作无法撤销。<br>
-                <span style="font-size: 14px; color: #ccc;">Are you sure you want to erase all game progress? This action cannot be undone.</span>
+                您确定要清除所有训练记录吗？此操作无法撤销。<br>
+                <span style="font-size: 14px; color: #ccc;">Are you sure you want to erase all progress? This action cannot be undone.</span>
             </p>
             <div style="display: flex; gap: 15px; justify-content: center;">
                 <button id="reset-confirm-yes" class="menu-button" style="width: 150px; background-color: #b22222;">确定 / Confirm</button>
@@ -551,13 +621,12 @@
         </div>
     </div>
 
-    <!-- New Warmup Confirmation Overlay -->
     <div id="warmup-confirm-overlay" class="overlay" style="display: none; z-index: 17;">
         <div id="warmup-confirm-box" class="confirm-box">
-            <h2>开始挑战？ / Start Challenge?</h2>
+            <h2>开始训练？ / Start Training?</h2>
             <p style="font-size: 16px; line-height: 1.5;">
-                热身结束！您准备好进入第一关开始正式挑战了吗？<br>
-                <span style="font-size: 14px; color: #ccc;">Warm-up complete! Are you ready to enter Level 1 and start the official challenge?</span>
+                热身结束！准备好开始第一项认知训练了吗？<br>
+                <span style="font-size: 14px; color: #ccc;">Warm-up complete! Are you ready to start the first cognitive training?</span>
             </p>
             <div style="display: flex; gap: 15px; justify-content: center;">
                 <button id="warmup-confirm-yes" class="menu-button" style="width: 150px;">准备好了 / Yes</button>
@@ -569,21 +638,23 @@
 
     <div id="training-command"></div>
 
-    <div id="crosshair"></div>
+    <!-- MODIFIED: Added inner div for style toggling -->
+    <div id="crosshair"><div></div></div>
+
     <div id="timer">0.00s</div>
-    <div id="warmup-timer-display"></div> <!-- New Warmup Timer -->
+    <div id="warmup-timer-display"></div>
     <div id="minimap-container"><canvas id="minimap"></canvas></div>
     <div id="narration-box"></div>
 
     <div id="menu-overlay" class="overlay">
         <div id="menu-content">
-            <button class="menu-button" id="resume-button">继续游戏<br>Resume</button>
+            <button class="menu-button" id="resume-button">继续训练<br>Resume</button>
             <button class="menu-button" id="restart-button">重新开始<br>Restart</button>
             <button class="menu-button" id="select-level-button">选择关卡<br>Select Level</button>
             <div id="level-select-menu"></div>
             <button class="menu-button" id="warmup-button">返回热身<br>Warm-up</button>
             <button class="menu-button" id="main-menu-button">返回主菜单<br>Main Menu</button>
-            <button class="menu-button" id="reset-game-button">游戏重置<br>Reset Game</button>
+            <button class="menu-button" id="reset-game-button">重置档案<br>Reset Profile</button>
         </div>
     </div>
 
@@ -602,11 +673,16 @@
             <div class="key" id="key-d">D</div>
         </div>
         <div class="key-row">
-            <div class="key key-long" id="key-space">空格<br>Space</div>
+           <div class="key key-long" id="key-space">空格<br>Space</div>
         </div>
          <div class="key-row">
             <div class="key key-long" id="key-shift">Shift</div>
         </div>
+    </div>
+
+    <div id="player-health-container">
+        <div id="player-health-bar"></div>
+        <div id="player-health-text"></div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -637,31 +713,43 @@
         let canPlayerMove = true;
         let hasPlayerMoved = false;
 
+        // --- Player Combat Variables ---
+        let playerHealth = 3;
+        const maxPlayerHealth = 3;
+        let isPlayerDead = false;
+
         // --- Reward System Variables ---
         let playerProfile = { nickname: '', title: '' };
         let levelStars = {};
-        const starTimeThresholds = {
-            1: { s3: 5,   s2: 10 },  // Look
-            2: { s3: 10,  s2: 15 },  // Forward
-            3: { s3: 150, s2: 200 }, // Shuttle Run (Static)
-            4: { s3: 180, s2: 240 }, // Shuttle Run (Moving)
-            5: { s3: 150, s2: 200 }, // Shuttle Run (High-Speed)
-            6: { s3: 30,  s2: 60 },  // Mission Corridor
-            7: { s3: 20,  s2: 25 },  // Move
-            8: { s3: 10,  s2: 15 },  // Jump
-            9: { s3: 15,  s2: 20 },  // Skills
-            10: { s3: 15, s2: 25 },  // Timed0
-            11: { s3: 30, s2: 45 },  // Timed1
-            12: { s3: 40, s2: 55 },  // Timed2
-            13: { s3: 50, s2: 65 },  // Timed3
-            14: { s3: 30, s2: 45 },  // Chase1
-            15: { s3: 45, s2: 60 },  // Chase2
-            16: { s3: 60, s2: 75 },  // Chase3
-            17: { s3: 90, s2: 120 }, // Landmark1
-            18: { s3: 200,s2: 300 }, // Landmark2
-            19: { s3: 400,s2: 500 }, // Landmark3
+        let starTimeThresholds = {
+            1: { s3: 5,   s2: 10 },   // Attention: Point Focus
+            2: { s3: 15,  s2: 25 },   // Reaction: Quick Response (Adjusted)
+            3: { s3: 20,  s2: 30 },   // Processing: Dynamic Tracking (Adjusted)
+            4: { s3: 25,  s2: 40 },   // Prediction: Trajectory Forecast (Adjusted)
+            5: { s3: 30,  s2: 45 },   // Coordination: Synchronized Tasks
+            6: { s3: 20,  s2: 30 },   // Spatial Planning: Blueprint Navigation (Adjusted)
+            7: { s3: 15,  s2: 20 },   // Motor Skills: Rhythmic Leap (Adjusted)
+            8: { s3: 20,  s2: 25 },   // Cognitive Flexibility: Task Switching (Adjusted)
+            9: { s3: 25,  s2: 40 },   // Working Memory: Maze Sprint I (Adjusted)
+            10: { s3: 40, s2: 60 },   // Working Memory: Maze Sprint II (Adjusted)
+            11: { s3: 60, s2: 80 },   // Working Memory: Maze Sprint III (Adjusted)
+            12: { s3: 80, s2: 110 },  // Working Memory: Maze Sprint IV (Adjusted)
+            13: { s3: 30, s2: 45 },   // Strategic Thinking: Dynamic Chase I
+            14: { s3: 45, s2: 60 },   // Strategic Thinking: Dynamic Chase II
+            15: { s3: 60, s2: 75 },   // Strategic Thinking: Dynamic Chase III
+            16: { s3: 40, s2: 55 },   // Sequential Memory: Landmark Trace I (Adjusted)
+            17: { s3: 50, s2: 65 },   // Sequential Memory: Landmark Trace II (Adjusted)
+            18: { s3: 70, s2: 90 },   // Sequential Memory: Landmark Trace III (Adjusted)
+            19: { s3: 80, s2: 100 },  // Sequential Memory: Landmark Trace IV (Adjusted)
+            20: { s3: 90, s2: 120 },  // Sequential Memory: Landmark Trace V (Adjusted)
+            21: { s3: 100, s2: 130 }, // Sequential Memory: Landmark Trace VI (Adjusted)
+            22: { s3: 60, s2: 80 },   // Risk & Decision: Hazard Breakout I (Adjusted)
+            23: { s3: 80, s2: 110 },  // Risk & Decision: Hazard Breakout II (Adjusted)
+            24: { s3: 100, s2: 140 }, // Risk & Decision: Hazard Breakout III (Adjusted)
+            25: { s3: 120, s2: 160 }, // Risk & Decision: Hazard Breakout IV (Adjusted)
+            26: { s3: 150, s2: 200 }, // Risk & Decision: Hazard Breakout V (Adjusted)
         };
-        const TOTAL_LEVELS = 20;
+        const TOTAL_LEVELS = 27;
 
         // --- UI Elements ---
         let instructionElement, blockerElement, crosshairElement, npcCounterElement, landmarkCounterElement, genericCounterElement, mapUsesCounterElement;
@@ -669,6 +757,7 @@
         let keyDisplay, keyW, keyA, keyS, keyD, keySpace, keyShift;
         let narrationBox, resultsOverlay, trainingChoiceOverlay, trainingCommandElement, resetConfirmOverlay;
         let warmupConfirmOverlay; 
+        let healthContainer, healthBar, healthText;
 
         // --- Stage Specific Variables ---
         let stageObjects = [];
@@ -676,6 +765,7 @@
         let animatedObjects = [];
         let npcs = [];
         let landmarks = [];
+        let turrets = [];
         let nextLandmarkIndex = 0;
         const raycaster = new THREE.Raycaster();
         const centerScreen = new THREE.Vector2(0, 0);
@@ -684,19 +774,15 @@
         let stageCompletionFlag = false; 
         let isTransitioning = false;
         let highlightedRing = null;
-        let narrationFlags = { wasd: false, skill: false, target: false };
         
-        // --- Shuttle Run Variables ---
         let shuttleRunState = {};
         let shuttleRunMaterials = {};
         let trailParticles = []; 
 
-        // --- Mission Corridor Variables ---
         let corridorState = {};
         let corridorTargets = [];
         let activatedCorridorTargets = new Set();
 
-        // --- WASD Training Area Variables ---
         let wasdTrainingKeys = [];
         let wasdCenterButton = null;
         let wasdTrainingActivated = false;
@@ -704,13 +790,11 @@
         let currentTrainingKey = null; 
         let isWaitingForNextCommand = false;
 
-        // --- Shooting System Variables ---
         let toyGun;
         let bullets = [];
         let bulletHoles = [];
         let shootCooldown = 0;
 
-        // --- Timer & Minimap Variables ---
         let levelStartTime = 0;
         let timePausedAt = 0;
         let isTimerRunning = false;
@@ -720,11 +804,16 @@
         let fireworksInterval = null;
         let minimapUsesLeft = 8; 
         
-        // --- Warmup Countdown Variables ---
         let warmupCountdownInterval = null;
         let warmupTimerDisplayElement;
 
-        init();
+        let stonePathTexture, metallicPatternFloorTexture, shuttleRunStoneTexture, shuttleRunMetalTexture;
+        let shuttleRunFloorTexture, missionCorridorFloorTexture;
+        let mazeWallMaterial, shuttleRunWallMaterials;
+
+        window.onload = function() {
+            init();
+        };
 
         function init() {
             scene = new THREE.Scene();
@@ -775,10 +864,13 @@
             resetConfirmOverlay = document.getElementById('reset-confirm-overlay');
             warmupConfirmOverlay = document.getElementById('warmup-confirm-overlay');
             warmupTimerDisplayElement = document.getElementById('warmup-timer-display');
-
+            healthContainer = document.getElementById('player-health-container');
+            healthBar = document.getElementById('player-health-bar');
+            healthText = document.getElementById('player-health-text');
 
             playerVelocity = new THREE.Vector3();
 
+            createTexturesAndMaterials();
             setupModeSelection();
             setupMenu();
             setupResultsScreen();
@@ -877,7 +969,7 @@
                     return;
                 }
                 playerProfile.nickname = nickname;
-                playerProfile.title = selectedGender === 'male' ? `Uncle ${nickname}` : `Auntie ${nickname}`;
+                playerProfile.title = selectedGender === 'male' ? `${nickname} 叔叔` : `${nickname} 阿姨`;
                 localStorage.setItem('playerProfile', JSON.stringify(playerProfile));
                 document.getElementById('profile-creation-overlay').style.display = 'none';
                 startGame();
@@ -892,6 +984,7 @@
 
         function setupMenu() {
             blockerElement.addEventListener('click', () => {
+                if (isPlayerDead) return;
                 if (stageCompletionFlag) {
                     if (gameMode === 'campaign' && currentStage < TOTAL_LEVELS) {
                          hideMenuAndLoad(currentStage + 1);
@@ -979,14 +1072,35 @@
         }
 
         function updateLevelSelectMenu() {
+            // --- UPDATED: New Level Names based on Cognitive Training ---
             const stageNames = [
-                "1. 看/Look", "2. 前进/Forward", 
-                "3. 折返跑(静止)/Shuttle(S)", "4. 折返跑(移动)/Shuttle(M)", "5. 折返跑(高速)/Shuttle(H)",
-                "6. 使命长廊/Mission Corridor", "7. 移动/Move", "8. 跳跃/Jump", "9. 综合/Skills", 
-                "10. 计时挑战0/Timed0", "11. 计时挑战1/Timed1", "12. 计时挑战2/Timed2", "13. 计时挑战3/Timed3", 
-                "14. 追逐1/Chase1", "15. 追逐2/Chase2", "16. 追逐3/Chase3", 
-                "17. 地标寻路1/Landmark1", "18. 地标寻路2/Landmark2", "19. 地标寻路3/Landmark3", 
-                "20. 祝贺/Congratulations"
+                { zh: "注意力：定点聚焦", en: "Attention: Point Focus" },
+                { zh: "反应速度：瞬时响应", en: "Reaction: Quick Response" },
+                { zh: "处理速度：动态追踪", en: "Processing: Dynamic Tracking" },
+                { zh: "预判能力：轨迹预测", en: "Prediction: Trajectory Forecast" },
+                { zh: "手眼协调：同步处理", en: "Coordination: Synchronized Tasks" },
+                { zh: "空间规划：蓝图导航", en: "Spatial Planning: Blueprint Navigation" },
+                { zh: "动作规划：节奏跨越", en: "Motor Skills: Rhythmic Leap" },
+                { zh: "认知灵活性：任务切换", en: "Cognitive Flexibility: Task Switching" },
+                { zh: "工作记忆：迷宫速通 I", en: "Working Memory: Maze Sprint I" },
+                { zh: "工作记忆：迷宫速通 II", en: "Working Memory: Maze Sprint II" },
+                { zh: "工作记忆：迷宫速通 III", en: "Working Memory: Maze Sprint III" },
+                { zh: "工作记忆：迷宫速通 IV", en: "Working Memory: Maze Sprint IV" },
+                { zh: "策略思维：动态博弈 I", en: "Strategic Thinking: Dynamic Chase I" },
+                { zh: "策略思维：动态博弈 II", en: "Strategic Thinking: Dynamic Chase II" },
+                { zh: "策略思维：动态博弈 III", en: "Strategic Thinking: Dynamic Chase III" },
+                { zh: "顺序记忆：地标寻踪 I", en: "Sequential Memory: Landmark Trace I" },
+                { zh: "顺序记忆：地标寻踪 II", en: "Sequential Memory: Landmark Trace II" },
+                { zh: "顺序记忆：地标寻踪 III", en: "Sequential Memory: Landmark Trace III" },
+                { zh: "顺序记忆：地标寻踪 IV", en: "Sequential Memory: Landmark Trace IV" },
+                { zh: "顺序记忆：地标寻踪 V", en: "Sequential Memory: Landmark Trace V" },
+                { zh: "顺序记忆：地标寻踪 VI", en: "Sequential Memory: Landmark Trace VI" },
+                { zh: "风险决策：火线突围 I", en: "Risk & Decision: Hazard Breakout I" },
+                { zh: "风险决策：火线突围 II", en: "Risk & Decision: Hazard Breakout II" },
+                { zh: "风险决策：火线突围 III", en: "Risk & Decision: Hazard Breakout III" },
+                { zh: "风险决策：火线突围 IV", en: "Risk & Decision: Hazard Breakout IV" },
+                { zh: "风险决策：火线突围 V", en: "Risk & Decision: Hazard Breakout V" },
+                { zh: "综合能力认证", en: "Cognitive Mastery" }
             ];
             levelSelectMenu.innerHTML = ''; 
             stageNames.forEach((name, i) => {
@@ -994,9 +1108,9 @@
                 const button = document.createElement('button');
                 button.className = 'menu-button';
                 const isLocked = gameMode === 'campaign' && stageIndex > unlockedLevel;
-                let buttonHTML = name;
+                let buttonHTML = `${name.zh}<br><span style="font-size:12px;">${name.en}</span>`;
                 if (isLocked) {
-                    buttonHTML += ' (锁定 / Locked)';
+                    buttonHTML += ' <br><span style="font-size:12px; color: #888;">(锁定 / Locked)</span>';
                     button.classList.add('disabled');
                 } else {
                     const bestTime = levelTimes[stageIndex];
@@ -1033,7 +1147,7 @@
                 keyDisplay.style.opacity = '0';
                 document.removeEventListener('mousemove', onMouseMove, false);
                 pauseTimer();
-                if (!isTransitioning && !stageCompletionFlag && resultsOverlay.style.display !== 'flex' && trainingChoiceOverlay.style.display !== 'flex' && resetConfirmOverlay.style.display !== 'flex' && warmupConfirmOverlay.style.display !== 'flex') {
+                if (!isTransitioning && !stageCompletionFlag && !isPlayerDead && resultsOverlay.style.display !== 'flex' && trainingChoiceOverlay.style.display !== 'flex' && resetConfirmOverlay.style.display !== 'flex' && warmupConfirmOverlay.style.display !== 'flex') {
                     menuOverlay.style.display = 'flex';
                     document.getElementById('reset-game-button').style.display = (gameMode === 'campaign') ? 'inline-block' : 'none';
                     updateLevelSelectMenu();
@@ -1060,6 +1174,7 @@
                 narrationBox.style.display = 'none';
                 return;
             }
+            if (isPlayerDead) return;
 
             if (currentStage === 0 && wasdTrainingMode === 'special') {
                 wasdTrainingMode = 'free';
@@ -1070,7 +1185,7 @@
                 return;
             }
 
-            if (document.pointerLockElement === document.body && currentStage === 0 && shootCooldown <= 0) {
+            if (document.pointerLockElement === document.body && toyGun.visible && shootCooldown <= 0) {
                 handleShooting();
             }
         }
@@ -1088,35 +1203,28 @@
             stageCompletionFlag = false; 
             hasPlayerMoved = false;
             canPlayerMove = true;
+            isPlayerDead = false;
             
-            if (toyGun) toyGun.visible = (stageIndex === 0);
+            playerHealth = maxPlayerHealth;
+            updateHealthBar();
+            const isTurretLevel = (currentStage >= 22 && currentStage <= 26);
+            healthContainer.style.display = isTurretLevel ? 'block' : 'none';
+            if (toyGun) toyGun.visible = (stageIndex === 0 || isTurretLevel);
             
-            animatedObjects.forEach(obj => {
-                if (obj.userData.animation) { 
-                    obj.geometry.dispose();
-                    obj.material.dispose();
-                }
-            });
-            animatedObjects = [];
+            crosshairElement.className = isTurretLevel ? 'crosshair-turret' : 'crosshair-default';
 
-            bullets.forEach(b => scene.remove(b));
-            bulletHoles.forEach(h => h.mesh.parent.remove(h.mesh));
-            firework3DParticles.forEach(p => scene.remove(p.mesh));
-            trailParticles.forEach(p => scene.remove(p.mesh)); 
-            
             const childrenToRemove = scene.children.filter(child => child !== camera);
-            childrenToRemove.forEach(child => scene.remove(child));
+            childrenToRemove.forEach(child => {
+                child.traverse(object => {
+                    if (object.isMesh) {
+                        if (object.geometry) object.geometry.dispose();
+                    }
+                });
+                scene.remove(child);
+            });
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-            scene.add(ambientLight);
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
-            dirLight.position.set(-25, 35, 20);
-            dirLight.castShadow = true;
-            dirLight.shadow.mapSize.width = 2048;
-            dirLight.shadow.mapSize.height = 2048;
-            scene.add(dirLight);
-
-            stageObjects = []; collidables = []; npcs = []; landmarks = [];
+            stageObjects = []; collidables = []; npcs = []; landmarks = []; turrets = [];
+            animatedObjects = [];
             bullets = []; bulletHoles = []; firework3DParticles = []; trailParticles = []; 
             stage1Targets = []; aimedTargets.clear();
             shuttleRunState = {}; corridorState = {}; corridorTargets = []; activatedCorridorTargets.clear();
@@ -1126,14 +1234,22 @@
             wasdTrainingMode = null;
             currentTrainingKey = null;
             isWaitingForNextCommand = false;
-            narrationFlags = { wasd: false, skill: false, target: false };
             npcCounterElement.style.display = 'none';
             landmarkCounterElement.style.display = 'none';
             genericCounterElement.style.display = 'none';
             mapUsesCounterElement.style.display = 'none'; 
             scene.userData = {}; 
             
-            const isMinimapVisible = (currentStage === 7 || (currentStage >= 10 && currentStage <= 19));
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            dirLight.position.set(-25, 35, 20);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            scene.add(dirLight);
+            
+            const isMinimapVisible = (currentStage === 6 || (currentStage >= 9 && currentStage <= 26));
             minimapContainer.style.display = isMinimapVisible ? 'block' : 'none';
             
             playerVelocity.set(0, 0, 0);
@@ -1147,25 +1263,32 @@
             switch(currentStage) {
                 case 0: setupStage0_Warmup(); break;
                 case 1: setupStage1_Look(); break;
-                case 2: setupStage2_Forward(); break;
-                case 3: setupStage3_ShuttleRun_Static(); break;
-                case 4: setupStage4_ShuttleRun_Moving(); break;
-                case 5: setupStage5_ShuttleRun_HighSpeed(); break;
-                case 6: setupStage6_MissionCorridor(); break;
-                case 7: setupStage7_Move(); break;
-                case 8: setupStage8_Jump(); break;
-                case 9: setupStage9_Skills(); break;
-                case 10: setupStage10_Timed0(); break;
-                case 11: setupStage11_Timed1(); break;
-                case 12: setupStage12_Timed2(); break;
-                case 13: setupStage13_Timed3(); break;
-                case 14: setupStage14_Chase1(); break;
-                case 15: setupStage15_Chase2(); break;
-                case 16: setupStage16_Chase3(); break;
-                case 17: setupStage17_Landmark1(); break;
+                case 2: setupStage3_ShuttleRun_Static(); break;
+                case 3: setupStage4_ShuttleRun_Moving(); break;
+                case 4: setupStage5_ShuttleRun_HighSpeed(); break;
+                case 5: setupStage6_MissionCorridor(); break;
+                case 6: setupStage7_Move(); break;
+                case 7: setupStage8_Jump(); break;
+                case 8: setupStage9_Skills(); break;
+                case 9: setupStage10_Timed0(); break;
+                case 10: setupStage11_Timed1(); break;
+                case 11: setupStage12_Timed2(); break;
+                case 12: setupStage13_Timed3(); break;
+                case 13: setupStage14_Chase1(); break;
+                case 14: setupStage15_Chase2(); break;
+                case 15: setupStage16_Chase3(); break;
+                case 16: setupStage17_Landmark1(); break;
+                case 17: setupStage17_Landmark1_2(); break;
                 case 18: setupStage18_Landmark2(); break;
-                case 19: setupStage19_Landmark3(); break;
-                case 20: setupStage20_Final(); break;
+                case 19: setupStage18_Landmark2_2(); break;
+                case 20: setupStage19_Landmark3(); break;
+                case 21: setupStage19_Landmark3_2(); break;
+                case 22: setupStage22_TurretMaze1(); break;
+                case 23: setupStage23_TurretMaze2(); break;
+                case 24: setupStage24_TurretMaze3(); break;
+                case 25: setupStage25_TurretMaze4(); break;
+                case 26: setupStage26_TurretMaze5(); break;
+                case 27: setupStage_Final(); break; 
             }
 
             if (currentStage !== TOTAL_LEVELS) {
@@ -1224,36 +1347,38 @@
             if (!instructionTextElement || !starContainer) return;
             starContainer.innerHTML = ''; 
 
-            if (stageCompletionFlag) {
+            if (isPlayerDead) {
+                 text = `您已被击败！<br><br><span style="${enStyle}">You have been defeated!</span><br><br><div style="${clickContinueStyle}">点击以重新开始 / Click to Restart</div>`;
+            } else if (stageCompletionFlag) {
                 const elapsedTime = (clock.getElapsedTime() - levelStartTime);
                 let continueText;
                 if (gameMode === 'campaign') {
                     const stars = levelStars[currentStage] || 1;
                     starContainer.innerHTML = displayStars(stars);
-                    continueText = (currentStage < TOTAL_LEVELS - 1) ? "点击进入下一关 / Click for Next Level" : "点击查看最终成绩 / Click for Final Results";
-                    text = `太棒了, ${playerProfile.title}！<br>关卡完成！<br>用时: **${elapsedTime.toFixed(2)}** 秒<br><br><span style="${enStyle}">Great job, ${playerProfile.title}!<br>Level Complete!<br>Time: **${elapsedTime.toFixed(2)}** seconds</span><br><br><div style="${clickContinueStyle}">${continueText}</div>`;
+                    continueText = (currentStage < TOTAL_LEVELS) ? "点击进入下一关 / Click for Next Level" : "点击查看最终认证 / Click for Final Results";
+                    text = `太棒了, ${playerProfile.title}！<br>训练完成！<br>用时: **${elapsedTime.toFixed(2)}** 秒<br><br><span style="${enStyle}">Great job, ${playerProfile.title}!<br>Training Complete!<br>Time: **${elapsedTime.toFixed(2)}** seconds</span><br><br><div style="${clickContinueStyle}">${continueText}</div>`;
                 } else { 
                     recordTime(currentStage, elapsedTime);
                     continueText = "点击返回菜单 / Click to Return to Menu";
-                    text = `关卡完成！<br>用时: **${elapsedTime.toFixed(2)}** 秒<br><br><span style="${enStyle}">Level Complete!<br>Time: **${elapsedTime.toFixed(2)}** seconds</span><br><br><div style="${clickContinueStyle}">${continueText}</div>`;
+                    text = `训练完成！<br>用时: **${elapsedTime.toFixed(2)}** 秒<br><br><span style="${enStyle}">Training Complete!<br>Time: **${elapsedTime.toFixed(2)}** seconds</span><br><br><div style="${clickContinueStyle}">${continueText}</div>`;
                 }
             } else {
                 let greeting = gameMode === 'campaign' && playerProfile.title ? `你好, ${playerProfile.title}。<br><span style="${enStyle}">Hello, ${playerProfile.title}.</span><br>` : '';
                 switch(currentStage) {
-                    case 0: text = `这里是热身场地<br>请熟悉 **WASD** 移动，或穿过障碍并用准星瞄准靶子。<br>**点击鼠标左键**可以射击靶子。<br>熟悉操作后按 **ESC** 键打开菜单。<br><br><span style="${enStyle}">This is the warm-up area.<br>Practice with **WASD** or aim at the target.<br>**Left-click** to shoot.<br>Press **ESC** to open the menu.</span>`; break;
-                    case 1: text = `${greeting}请用准星瞄准所有 **红色** 圆球<br>已找到: ${aimedTargets.size} / 4<br><br><span style="${enStyle}">Aim at all **red** spheres.<br>Found: ${aimedTargets.size} / 4</span>`; break;
-                    case 2: text = `${greeting}做得好！<br>现在，请用 **W** 键向前走，穿过这条走廊，到达 **小红旗** 处。<br><br><span style="${enStyle}">Well done!<br>Now, use the **W** key to walk to the **red flag**.</span>`; break;
-                    case 3: text = `${greeting}折返跑训练(静止)！<br>移动到亮起的 **红色** 按钮处。直到所有按钮都变黄。<br>已完成: ${shuttleRunState.completedCount || 0} / 10<br><br><span style="${enStyle}">Shuttle Run Training (Static)!<br>Move to the lit **red** button. Complete when all buttons are yellow.<br>Completed: ${shuttleRunState.completedCount || 0} / 10</span>`; break;
-                    case 4: text = `${greeting}折返跑训练(移动)！<br>追上并触碰移动的 **红色** 按钮。<br>已完成: ${shuttleRunState.completedCount || 0} / 10<br><br><span style="${enStyle}">Shuttle Run Training (Moving)!<br>Chase and touch the moving **red** button.<br>Completed: ${shuttleRunState.completedCount || 0} / 10</span>`; break;
-                    case 5: text = `${greeting}折返跑训练(高速)！<br>追上并触碰高速移动的 **红色** 按钮。<br>已完成: ${shuttleRunState.completedCount || 0} / 10<br><br><span style="${enStyle}">Shuttle Run Training (High-Speed)!<br>Chase and touch the fast-moving **red** button.<br>Completed: ${shuttleRunState.completedCount || 0} / 10</span>`; break;
-                    case 6: text = `${greeting}使命长廊！<br>用准星将所有 **红色** 球变成 **绿色**，并抵达终点。<br>已激活: ${activatedCorridorTargets.size} / ${corridorState.allTargets?.length || 0}<br><br><span style="${enStyle}">Mission Corridor!<br>Turn all **red** spheres **green** with your crosshair and reach the end.<br>Activated: ${activatedCorridorTargets.size} / ${corridorState.allTargets?.length || 0}</span>`; break;
-                    case 7: text = `${greeting}太棒了！<br>现在试试用 **A, S, D, W** 键移动。请参考 **小地图** 的路线指引，找到 **小红旗**。<br><br><span style="${enStyle}">Great!<br>Now use **A, S, D, W** to move. Follow the route on the **minimap** to find the **red flag**.</span>`; break;
-                    case 8: text = `${greeting}非常好！<br>前方有一系列障碍。请按下 **空格键** 依次跳过去，抵达终点的**小红旗**。<br><br><span style="${enStyle}">Very good!<br>Press the **Spacebar** to jump over the obstacles to the **red flag**.</span>`; break;
-                    case 9: text = `${greeting}技巧挑战！<br>请综合运用**跳跃**和**蹲下(Shift)**穿过前方的障碍通道，抵达终点的**小红旗**。<br><br><span style="${enStyle}">Skill Challenge!<br>Use both **jumping** and **crouching (Shift)** to get to the **red flag**.</span>`; break;
-                    case 10: case 11: case 12: case 13: text = `${greeting}计时挑战 ${currentStage - 9}！<br>穿越这个迷宫，用最快的速度抵达终点！<br><br><span style="${enStyle}">Timed Challenge ${currentStage - 9}!<br>Get through this maze to the finish line as fast as you can!</span>`; break;
-                    case 14: case 15: case 16: text = `${greeting}追逐挑战 ${currentStage - 13}！<br>迷宫里出现了NPC！**在它们跑掉前捉住它们**！<br><br><span style="${enStyle}">Chase Challenge ${currentStage - 13}!<br>NPCs have appeared in the maze! **Catch them**!</span>`; break;
-                    case 17: case 18: case 19: text = `${greeting}地标寻路 ${currentStage - 16}！<br>请按顺序找到所有地标！<br>移动后小地图会消失，按 **E键** 可暂停并查看地图（有次数限制）。<br><br><span style="${enStyle}">Landmark Hunt ${currentStage - 16}!<br>Find all landmarks in order!<br>Minimap disappears on move. Press **E** to pause and view map (limited uses).</span>`; break;
-                    case 20: text = ``; break;
+                    case 0: text = `欢迎来到认知热身！<br>请熟悉 **WASD** 移动, **空格** 跳跃, **Shift** 下蹲。<br>用准星瞄准靶子, **点击鼠标左键** 射击。<br>熟悉后按 **ESC** 打开菜单进入训练。<br><br><span style="${enStyle}">Welcome to Cognitive Warm-up!<br>Use **WASD** to move, **Space** to jump, and **Shift** to crouch. Aim at targets and **Left-click** to shoot.<br>Press **ESC** to open the menu when ready.</span>`; break;
+                    case 1: text = `${greeting}**注意力训练：定点聚焦**<br>请用准星瞄准所有 **红色** 目标。<br>已找到: ${aimedTargets.size} / 4<br><br><span style="${enStyle}">**Attention: Point Focus**<br>Aim at all **red** targets.<br>Found: ${aimedTargets.size} / 4</span>`; break;
+                    case 2: text = `${greeting}**反应速度训练：瞬时响应**<br>请快速移动到亮起的 **红色** 目标处。<br>已完成: ${shuttleRunState.completedCount || 0} / 10<br><br><span style="${enStyle}">**Reaction: Quick Response**<br>Quickly move to the lit **red** target.<br>Completed: ${shuttleRunState.completedCount || 0} / 10</span>`; break;
+                    case 3: text = `${greeting}**处理速度训练：动态追踪**<br>请追上并触碰移动的 **红色** 目标。<br>已完成: ${shuttleRunState.completedCount || 0} / 10<br><br><span style="${enStyle}">**Processing: Dynamic Tracking**<br>Chase and touch the moving **red** target.<br>Completed: ${shuttleRunState.completedCount || 0} / 10</span>`; break;
+                    case 4: text = `${greeting}**预判能力训练：轨迹预测**<br>请预判并拦截高速移动的 **红色** 目标。<br>已完成: ${shuttleRunState.completedCount || 0} / 10<br><br><span style="${enStyle}">**Prediction: Trajectory Forecast**<br>Predict and intercept the fast-moving **red** target.<br>Completed: ${shuttleRunState.completedCount || 0} / 10</span>`; break;
+                    case 5: text = `${greeting}**手眼协调训练：同步处理**<br>请在前进中用准星激活所有 **红色** 目标，并抵达终点。<br>已激活: ${activatedCorridorTargets.size} / ${corridorState.allTargets?.length || 0}<br><br><span style="${enStyle}">**Coordination: Synchronized Tasks**<br>Activate all **red** targets while moving and reach the end.<br>Activated: ${activatedCorridorTargets.size} / ${corridorState.allTargets.length || 0}</span>`; break;
+                    case 6: text = `${greeting}**空间规划训练：蓝图导航**<br>请参考 **小地图** 的路线指引，找到终点。<br><br><span style="${enStyle}">**Spatial Planning: Blueprint Navigation**<br>Follow the route on the **minimap** to find the goal.</span>`; break;
+                    case 7: text = `${greeting}**动作规划训练：节奏跨越**<br>请按下 **空格键**，按节奏跳过障碍，抵达终点。<br><br><span style="${enStyle}">**Motor Skills: Rhythmic Leap**<br>Press **Spacebar** to rhythmically jump over the obstacles to the goal.</span>`; break;
+                    case 8: text = `${greeting}**认知灵活性训练：任务切换**<br>请综合运用**跳跃**和**下蹲(Shift)**穿过障碍，抵达终点。<br><br><span style="${enStyle}">**Cognitive Flexibility: Task Switching**<br>Use both **jumping** and **crouching (Shift)** to get to the goal.</span>`; break;
+                    case 9: case 10: case 11: case 12: text = `${greeting}**工作记忆训练：迷宫速通 ${currentStage - 8}**<br>用最快的速度抵达终点！<br><br><span style="${enStyle}">**Working Memory: Maze Sprint ${currentStage - 8}**<br>Get to the finish line as fast as you can!</span>`; break;
+                    case 13: case 14: case 15: text = `${greeting}**策略思维训练：动态博弈 ${currentStage - 12}**<br>迷宫里出现了动态目标！**在它们跑掉前捉住它们**！<br><br><span style="${enStyle}">**Strategic Thinking: Dynamic Chase ${currentStage - 12}**<br>Dynamic targets have appeared! **Catch them**!</span>`; break;
+                    case 16: case 17: case 18: case 19: case 20: case 21: text = `${greeting}**顺序记忆训练：地标寻踪**<br>请按顺序找到所有地标！<br>移动后小地图会消失，按 **E键** 可暂停并查看地图（有次数限制）。<br><br><span style="${enStyle}">**Sequential Memory: Landmark Trace**<br>Find all landmarks in order!<br>Minimap disappears on move. Press **E** to pause and view map (limited uses).</span>`; break;
+                    case 22: case 23: case 24: case 25: case 26: text = `${greeting}**风险决策训练：火线突围**<br>找到所有地标，同时要小心**防御塔**！<br>摧毁它们可以恢复1点HP并增加1次地图使用次数，也可以选择躲开攻击！<br><br><span style="${enStyle}">**Risk & Decision: Hazard Breakout**<br>Find all landmarks, but watch out for **turrets**!<br>Destroying them restores 1 HP and grants 1 map use. You can also evade their fire!</span>`; break;
+                    case 27: text = ``; break;
                     default: text = `点击鼠标左键开始<br><span style="font-size:12px;">Left Click to Start</span>`; break;
                 }
             }
@@ -1272,24 +1397,16 @@
 
             if (shootCooldown > 0) shootCooldown -= deltaTime;
 
-            if (currentStage === 4 || currentStage === 5) {
+            if (currentStage >= 2 && currentStage <= 4) {
                 updateShuttleRunTargets(deltaTime);
+            }
+            if (currentStage >= 22 && currentStage <= 26) {
+                updateTurrets(deltaTime);
             }
 
             animatedObjects.forEach(obj => {
                 if (obj.userData.animation) {
-                    obj.userData.animation(totalTime);
-                } else if(obj.name === "welcome_text") { 
-                    obj.position.y = 4 + Math.sin(totalTime * 1.5) * 0.2; 
-                    obj.rotation.y = Math.sin(totalTime * 0.5) * 0.2; 
-                } else if (obj.name === "warmup_target") { 
-                    obj.position.x = Math.sin(totalTime * 0.5) * 8; 
-                } else if(obj.children.length > 10) { 
-                    obj.position.y = 0.5 + Math.sin(totalTime * 1.5) * 0.1; 
-                    obj.rotation.y += 0.1 * deltaTime; 
-                } else { 
-                    obj.rotation.y += 0.8 * deltaTime; 
-                    obj.rotation.x += 0.5 * deltaTime; 
+                    obj.userData.animation(totalTime, deltaTime);
                 }
             });
 
@@ -1302,40 +1419,33 @@
             
             if (minimapContainer.style.display === 'block') drawMinimap(); 
             
-            if (document.pointerLockElement === document.body) {
+            if (document.pointerLockElement === document.body && !isPlayerDead) {
                 updatePlayer(deltaTime);
                 if (currentStage === 0) { 
                     handleWarmupAiming(); 
                     updateWasdTraining();
-                    handleWarmupNarration();
                 }
                 if (currentStage === 1) handleAiming();
-                if (currentStage === 6) handleCorridorAiming();
-                if (currentStage >= 14 && currentStage <= 16 && npcs.length > 0) npcs.forEach(npc => updateNPC(npc, deltaTime));
+                if (currentStage === 5) handleCorridorAiming();
+                if (currentStage >= 13 && currentStage <= 15 && npcs.length > 0) npcs.forEach(npc => updateNPC(npc, deltaTime));
                 checkStageCompletion();
                 updateKeyDisplay();
             }
 
             if (camera.position.y < -30 && !isTransitioning) {
-                isTransitioning = true;
-                if (document.pointerLockElement) document.exitPointerLock();
-                document.getElementById('instruction-text').innerHTML = `坠落...<br><span style="font-size:14px; color: #ccc;">Falling...</span>`;
-                blockerElement.style.display = 'flex';
-                instructionElement.style.display = 'block';
-                setTimeout(() => { loadStage(currentStage); }, 1000);
+                handlePlayerDeath();
             }
 
             renderer.render(scene, camera);
         }
 
         function checkStageCompletion() {
-            if (stageCompletionFlag || isTransitioning) return;
+            if (stageCompletionFlag || isTransitioning || isPlayerDead) return;
             let shouldAdvance = false;
             const playerPos = camera.position;
             switch(currentStage) {
                 case 1: if (stage1Targets.length > 0 && aimedTargets.size === stage1Targets.length) shouldAdvance = true; break;
-                case 2: if (playerPos.z < -18) shouldAdvance = true; break;
-                case 3: case 4: case 5:
+                case 2: case 3: case 4:
                     if (shuttleRunState.activeTarget) {
                         if (playerPos.distanceTo(shuttleRunState.activeTarget.position) < 2.0) {
                             create3DFirework(shuttleRunState.activeTarget.position);
@@ -1351,25 +1461,25 @@
                         }
                     }
                     break;
-                case 6:
-                    const finishFlag6 = scene.getObjectByName("finish_flag");
+                case 5:
+                    const finishFlag5 = scene.getObjectByName("finish_flag");
                     const allTargetsHit = activatedCorridorTargets.size === corridorState.allTargets.length;
-                    const playerAtEnd = finishFlag6 && playerPos.distanceTo(finishFlag6.position) < 3;
+                    const playerAtEnd = finishFlag5 && playerPos.distanceTo(finishFlag5.position) < 3;
                     if (allTargetsHit && playerAtEnd) {
                         shouldAdvance = true;
                     }
                     break;
-                case 7: 
-                    const target7 = scene.getObjectByName("finish_flag");
-                    if (target7 && playerPos.distanceTo(target7.position) < 3) shouldAdvance = true;
+                case 6: 
+                    const target6 = scene.getObjectByName("finish_flag");
+                    if (target6 && playerPos.distanceTo(target6.position) < 3) shouldAdvance = true;
                     break;
-                case 8: if (playerPos.z < -18) shouldAdvance = true; break;
-                case 9: if (playerPos.z < -23) shouldAdvance = true; break;
-                case 10: case 11: case 12: case 13:
+                case 7: if (playerPos.z < -18) shouldAdvance = true; break;
+                case 8: if (playerPos.z < -23) shouldAdvance = true; break;
+                case 9: case 10: case 11: case 12:
                     const endPos = scene.userData.endPos;
                     if (endPos && playerPos.distanceTo(endPos) < 4) shouldAdvance = true;
                     break;
-                case 14: case 15: case 16:
+                case 13: case 14: case 15:
                     const playerPos2D = new THREE.Vector2(playerPos.x, playerPos.z);
                     for (let i = npcs.length - 1; i >= 0; i--) {
                         const npc = npcs[i];
@@ -1379,7 +1489,7 @@
                     }
                     if (npcs.length === 0) shouldAdvance = true;
                     break;
-                case 17: case 18: case 19:
+                case 16: case 17: case 18: case 19: case 20: case 21: case 22: case 23: case 24: case 25: case 26:
                     if (landmarks.length > 0 && nextLandmarkIndex < landmarks.length) {
                         const nextLandmark = landmarks[nextLandmarkIndex];
                         if (!nextLandmark.userData.isFound && playerPos.distanceTo(nextLandmark.position) < 3) {
@@ -1401,7 +1511,7 @@
                 const elapsedTime = (clock.getElapsedTime() - levelStartTime);
                 if (gameMode === 'campaign') {
                     if (currentStage >= unlockedLevel) {
-                         unlockedLevel = Math.min(currentStage + 1, TOTAL_LEVELS);
+                         unlockedLevel = Math.min(currentStage + 1, TOTAL_LEVELS + 1);
                     }
                     const newStars = getStarRating(currentStage, elapsedTime);
                     if (!levelStars[currentStage] || newStars > levelStars[currentStage]) {
@@ -1427,7 +1537,7 @@
             if (event.code === 'Escape') { 
                 if (document.pointerLockElement === document.body) document.exitPointerLock();
             }
-            if (event.code === 'KeyE' && (currentStage >= 17 && currentStage <= 19)) {
+            if (event.code === 'KeyE' && (currentStage >= 16 && currentStage <= 26)) {
                 if (minimapUsesLeft > 0) {
                     if (minimapContainer.style.display === 'none') { 
                         minimapUsesLeft--;
@@ -1445,46 +1555,288 @@
 
         function onKeyUp(event) {
             keys[event.code] = false;
-            if (event.code === 'KeyE' && (currentStage >= 17 && currentStage <= 19)) {
+            if (event.code === 'KeyE' && (currentStage >= 16 && currentStage <= 26)) {
                 canPlayerMove = true;
                 if (hasPlayerMoved) minimapContainer.style.display = 'none';
             }
         }
 
         // --- Helper Functions ---
+        function createTexturesAndMaterials() {
+            let canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 512;
+            let ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#555555';
+            ctx.fillRect(0, 0, 512, 512);
+            let imageData = ctx.getImageData(0, 0, 512, 512);
+            let data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                const randomFactor = (Math.random() - 0.5) * 30;
+                data[i]   += randomFactor;
+                data[i+1] += randomFactor;
+                data[i+2] += randomFactor;
+            }
+            ctx.putImageData(imageData, 0, 0);
+            ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 512; i += 64) {
+                for (let j = 0; j < 512; j += 64) {
+                    ctx.beginPath();
+                    ctx.arc(i + 32, j + 32, 32, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+            stonePathTexture = new THREE.CanvasTexture(canvas);
+            stonePathTexture.wrapS = THREE.RepeatWrapping;
+            stonePathTexture.wrapT = THREE.RepeatWrapping;
+
+            canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 512;
+            ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#404050';
+            ctx.fillRect(0, 0, 512, 512);
+            imageData = ctx.getImageData(0, 0, 512, 512);
+            data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                const randomFactor = (Math.random() - 0.5) * 15;
+                data[i] += randomFactor;
+                data[i+1] += randomFactor;
+                data[i+2] += randomFactor;
+            }
+            ctx.putImageData(imageData, 0, 0);
+            ctx.strokeStyle = 'rgba(200, 200, 255, 0.1)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 512; i += 128) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0); ctx.lineTo(i, 512); ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i); ctx.lineTo(512, i); ctx.stroke();
+            }
+            metallicPatternFloorTexture = new THREE.CanvasTexture(canvas);
+            metallicPatternFloorTexture.wrapS = THREE.RepeatWrapping;
+            metallicPatternFloorTexture.wrapT = THREE.RepeatWrapping;
+
+            canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#888'; ctx.fillRect(0, 0, 256, 256);
+            for (let i = 0; i < 60; i++) {
+                const x = Math.random() * 256; const y = Math.random() * 256;
+                const rX = Math.random() * 20 + 15; const rY = Math.random() * 20 + 15;
+                const color = Math.floor(Math.random() * 40) + 90;
+                ctx.fillStyle = `rgb(${color},${color},${color})`;
+                ctx.beginPath(); ctx.ellipse(x, y, rX, rY, Math.random() * Math.PI, 0, 2 * Math.PI); ctx.fill();
+            }
+            shuttleRunStoneTexture = new THREE.CanvasTexture(canvas);
+            shuttleRunStoneTexture.wrapS = THREE.RepeatWrapping;
+            shuttleRunStoneTexture.wrapT = THREE.RepeatWrapping;
+
+            canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#4a4a52'; ctx.fillRect(0, 0, 256, 256);
+            ctx.strokeStyle = '#686870'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(128, 0); ctx.lineTo(128, 256); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, 128); ctx.lineTo(256, 128); ctx.stroke();
+            ctx.fillStyle = '#787880';
+            for (let i = 0; i < 4; i++) {
+                const cornerX = (i % 2) * 128; const cornerY = Math.floor(i / 2) * 128;
+                ctx.beginPath(); ctx.arc(cornerX + 8, cornerY + 8, 3, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(cornerX + 120, cornerY + 8, 3, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(cornerX + 8, cornerY + 120, 3, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(cornerX + 120, cornerY + 120, 3, 0, Math.PI * 2); ctx.fill();
+            }
+            shuttleRunMetalTexture = new THREE.CanvasTexture(canvas);
+            shuttleRunMetalTexture.wrapS = THREE.RepeatWrapping;
+            shuttleRunMetalTexture.wrapT = THREE.RepeatWrapping;
+            
+            shuttleRunFloorTexture = createClassicalPatternTexture();
+            missionCorridorFloorTexture = createSimpleGridTexture();
+
+            mazeWallMaterial = new THREE.MeshStandardMaterial({
+                color: 0xF5F5DC,
+                metalness: 0.7,
+                roughness: 0.4
+            });
+
+            shuttleRunWallMaterials = [
+                new THREE.MeshStandardMaterial({ map: shuttleRunStoneTexture, roughness: 0.8, metalness: 0.1 }),
+                new THREE.MeshStandardMaterial({ map: shuttleRunMetalTexture, roughness: 0.8, metalness: 0.6 })
+            ];
+        }
+
+        function createClassicalPatternTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#BBBBBB';
+            ctx.fillRect(0, 0, 512, 512);
+            ctx.strokeStyle = 'rgba(120, 120, 120, 0.5)';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    const x = i * 128 + 64;
+                    const y = j * 128 + 64;
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(Math.PI / 4 * (i+j));
+                    ctx.beginPath();
+                    ctx.moveTo(0, -40);
+                    ctx.quadraticCurveTo(20, -20, 0, 0);
+                    ctx.quadraticCurveTo(-20, -20, 0, -40);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(0, 40);
+                    ctx.quadraticCurveTo(20, 20, 0, 0);
+                    ctx.quadraticCurveTo(-20, 20, 0, 40);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(-40, 0);
+                    ctx.quadraticCurveTo(-20, 20, 0, 0);
+                    ctx.quadraticCurveTo(-20, -20, -40, 0);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(40, 0);
+                    ctx.quadraticCurveTo(20, 20, 0, 0);
+                    ctx.quadraticCurveTo(20, -20, 40, 0);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            return texture;
+        }
+
+        function createSimpleGridTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#3d3d4d';
+            ctx.fillRect(0, 0, 256, 256);
+            ctx.strokeStyle = 'rgba(150, 150, 200, 0.2)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 256; i += 32) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, 256);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(256, i);
+                ctx.stroke();
+            }
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            return texture;
+        }
+
         function createWall(x, y, z, width, height, depth, color = 0xaaaaaa) { const g = new THREE.BoxGeometry(width, height, depth); const m = new THREE.MeshStandardMaterial({ color: color }); const w = new THREE.Mesh(g, m); w.position.set(x, y, z); w.receiveShadow = true; w.castShadow = true; scene.add(w); stageObjects.push(w); collidables.push(w); return w; }
-        function createFloor(width, depth) { const g = new THREE.PlaneGeometry(width, depth); const m = new THREE.MeshStandardMaterial({ color: 0x80c080, side: THREE.DoubleSide }); const f = new THREE.Mesh(g, m); f.rotation.x = -Math.PI / 2; f.receiveShadow = true; scene.add(f); stageObjects.push(f); }
+        
+        function createFloor(width, depth, material) {
+            const g = new THREE.PlaneGeometry(width, depth);
+            const m = material || new THREE.MeshStandardMaterial({ color: 0x80c080, side: THREE.DoubleSide });
+            const f = new THREE.Mesh(g, m);
+            f.rotation.x = -Math.PI / 2;
+            f.receiveShadow = true;
+            scene.add(f);
+            stageObjects.push(f);
+        }
+
         function createFinishFlag(x, y, z) { const g = new THREE.Group(); const pg = new THREE.CylinderGeometry(0.1, 0.1, 4, 8); const pm = new THREE.MeshStandardMaterial({ color: 0x666666 }); const p = new THREE.Mesh(pg, pm); p.position.y = 2; g.add(p); const fg = new THREE.PlaneGeometry(1.5, 1); const fm = new THREE.MeshStandardMaterial({ color: 0xff0000, side: THREE.DoubleSide, emissive: 0x550000 }); const f = new THREE.Mesh(fg, fm); f.position.set(0.75, 3.5, 0); g.add(f); g.position.set(x, y, z); g.name = "finish_flag"; scene.add(g); stageObjects.push(g); return g; }
+        
+        function createHeartBalloon(x, y, z) {
+            const balloonGroup = new THREE.Group();
+            const heartShape = new THREE.Shape();
+            const s = 0.8;
+            heartShape.moveTo(0, 0.2 * s);
+            heartShape.absarc( -0.4*s, 0.6*s, 0.4*s, Math.PI * 1.5, Math.PI * 0.5, true );
+            heartShape.absarc( 0.4*s, 0.6*s, 0.4*s, Math.PI * 0.5, Math.PI * 1.5, true );
+
+            const extrudeSettings = { steps: 2, depth: 0.4, bevelEnabled: true, bevelThickness: 0.1, bevelSize: 0.1, bevelOffset: 0, bevelSegments: 8 };
+            const geometry = new THREE.ExtrudeGeometry(heartShape, extrudeSettings);
+            const material = new THREE.MeshStandardMaterial({ color: 0xff004f, emissive: 0x880011, metalness: 0.4, roughness: 0.5 });
+            const balloon = new THREE.Mesh(geometry, material);
+            balloon.castShadow = true;
+            balloonGroup.add(balloon);
+            
+            const stringGeo = new THREE.CylinderGeometry(0.02, 0.02, 3, 8);
+            const stringMat = new THREE.MeshBasicMaterial({ color: 0xeeeeee });
+            const string = new THREE.Mesh(stringGeo, stringMat);
+            string.position.y = -1.5;
+            balloonGroup.add(string);
+
+            balloonGroup.position.set(x, y + 4.5, z);
+            
+            balloonGroup.userData.animation = (time) => {
+                balloonGroup.position.y = y + 4.5 + Math.sin(time * 1.5) * 0.5;
+                balloonGroup.rotation.y = time * 0.3;
+            };
+
+            scene.add(balloonGroup);
+            stageObjects.push(balloonGroup);
+            animatedObjects.push(balloonGroup);
+            return balloonGroup;
+        }
+
         function createCapsule(r, h, c) { const g = new THREE.Group(); const m = new THREE.MeshStandardMaterial({ color: c }); const ch = h - (r * 2); const cg = new THREE.CylinderGeometry(r, r, ch, 32); const cyl = new THREE.Mesh(cg, m); cyl.castShadow = true; cyl.receiveShadow = true; g.add(cyl); const sg = new THREE.SphereGeometry(r, 32, 16); const ts = new THREE.Mesh(sg, m); ts.position.y = ch / 2; ts.castShadow = true; ts.receiveShadow = true; g.add(ts); const bs = new THREE.Mesh(sg, m); bs.position.y = -ch / 2; bs.castShadow = true; bs.receiveShadow = true; g.add(bs); g.velocity = new THREE.Vector3(); return g; }
-        function createCircularTarget() { const g = new THREE.Group(); g.name = "warmup_target"; const rings = [{ c: 0xffffff, r: 1.5 }, { c: 0xffffff, r: 1.3 }, { c: 0x000000, r: 1.1 }, { c: 0x000000, r: 0.9 }, { c: 0x87CEEB, r: 0.7 }, { c: 0x87CEEB, r: 0.5 }, { c: 0xFF4500, r: 0.4 }, { c: 0xFF4500, r: 0.3 }, { c: 0xFFD700, r: 0.2 }, { c: 0xFFD700, r: 0.1 }]; for (let i = 0; i < rings.length; i++) { const ring = rings[i]; let geo; if (i === rings.length - 1) { geo = new THREE.CircleGeometry(ring.r, 32); } else { geo = new THREE.RingGeometry(rings[i+1].r, ring.r, 32); } const mat = new THREE.MeshStandardMaterial({ color: ring.c, side: THREE.DoubleSide, emissive: 0x000000 }); const mesh = new THREE.Mesh(geo, mat); mesh.position.z = i * 0.001; mesh.userData = { isTargetRing: true }; g.add(mesh); stageObjects.push(mesh); collidables.push(mesh); } const sg = new THREE.BoxGeometry(0.1, 1.5, 0.1); const sm = new THREE.MeshStandardMaterial({ color: 0x8B4513 }); const s = new THREE.Mesh(sg, sm); s.position.y = -0.75; s.position.z = -0.1; g.add(s); g.position.set(0, 2, -12); scene.add(g); stageObjects.push(g); animatedObjects.push(g); collidables.push(g);}
+        function createCircularTarget() { const g = new THREE.Group(); g.name = "warmup_target"; const rings = [{ c: 0xffffff, r: 1.5 }, { c: 0xffffff, r: 1.3 }, { c: 0x000000, r: 1.1 }, { c: 0x000000, r: 0.9 }, { c: 0x87CEEB, r: 0.7 }, { c: 0x87CEEB, r: 0.5 }, { c: 0xFF4500, r: 0.4 }, { c: 0xFF4500, r: 0.3 }, { c: 0xFFD700, r: 0.2 }, { c: 0xFFD700, r: 0.1 }]; for (let i = 0; i < rings.length; i++) { const ring = rings[i]; let geo; if (i === rings.length - 1) { geo = new THREE.CircleGeometry(ring.r, 32); } else { geo = new THREE.RingGeometry(rings[i+1].r, ring.r, 32); } const mat = new THREE.MeshStandardMaterial({ color: ring.c, side: THREE.DoubleSide, emissive: 0x000000 }); const mesh = new THREE.Mesh(geo, mat); mesh.position.z = i * 0.001; mesh.userData.isTargetRing = true; g.add(mesh); stageObjects.push(mesh); collidables.push(mesh); } const sg = new THREE.BoxGeometry(0.1, 1.5, 0.1); const sm = new THREE.MeshStandardMaterial({ color: 0x8B4513 }); const s = new THREE.Mesh(sg, sm); s.position.y = -0.75; s.position.z = -0.1; g.add(s); g.position.set(0, 2, -12); scene.add(g); stageObjects.push(g); animatedObjects.push(g); collidables.push(g);}
         function createLandmark(x, z, num) { const lg = new THREE.CylinderGeometry(1, 1, 0.5, 32); const lm = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xccaa00, transparent: true, opacity: 0.8 }); const l = new THREE.Mesh(lg, lm); l.position.set(x, 0.25, z); l.userData = { isLandmark: true, number: num, isFound: false }; scene.add(l); stageObjects.push(l); landmarks.push(l); const loader = new THREE.FontLoader(); loader.load('https://threejs.org/examples/fonts/helvetiker_bold.typeface.json', (font) => { const tg = new THREE.TextGeometry(num.toString(), { font: font, size: 0.8, height: 0.1 }); tg.computeBoundingBox(); const tm = new THREE.MeshBasicMaterial({ color: 0x000000 }); const t = new THREE.Mesh(tg, tm); t.position.x = -0.5 * (tg.boundingBox.max.x - tg.boundingBox.min.x); t.position.y = 0.3; t.rotation.x = -Math.PI / 2; l.add(t); }); return l; }
         function createInstructionText(text, font, position, color = 0xffffff) { const textLines = text.split('\n'); const textGroup = new THREE.Group(); const textMat = new THREE.MeshBasicMaterial({ color: color }); textLines.forEach((line, index) => { const textGeo = new THREE.TextGeometry(line, { font: font, size: 0.3, height: 0.01 }); textGeo.computeBoundingBox(); const textMesh = new THREE.Mesh(textGeo, textMat); textMesh.position.x = -0.5 * (textGeo.boundingBox.max.x - textGeo.boundingBox.min.x); textMesh.position.y = -index * 0.4; textGroup.add(textMesh); }); textGroup.position.copy(position); textGroup.rotation.x = -Math.PI / 2; scene.add(textGroup); stageObjects.push(textGroup); return textGroup; }
         function createPracticeAreaLayout(withObstacles = true) { createFloor(30, 30); createWall(0, 2.5, -15, 30, 5, 0.2); createWall(0, 2.5, 15, 30, 5, 0.2); createWall(-15, 2.5, 0, 0.2, 5, 30); createWall(15, 2.5, 0, 0.2, 5, 30); if (withObstacles) { const oW = 30, oH = 1.2, oD = 0.2; for (let i = 0; i < 5; i++) { createWall(0, oH / 2, -2 - (i * 2), oW, oH, oD, 0xcc5555); } } }
         
-        // NEW: Helper function to generate a clean, high-contrast texture for maze walls
-        function createMazeWallTexture() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 256; canvas.height = 256;
-            const ctx = canvas.getContext('2d');
-
-            // Light, comfortable background
-            ctx.fillStyle = '#dcdcdc'; 
-            ctx.fillRect(0, 0, 256, 256);
-
-            // Darker gray lines for a clear, simple paneling effect
-            ctx.strokeStyle = '#b0b0b0';
-            ctx.lineWidth = 6;
-
-            // Draw a border
-            ctx.strokeRect(3, 3, 250, 250);
-
-            // Draw a cross in the middle
-            ctx.beginPath();
-            ctx.moveTo(128, 0); ctx.lineTo(128, 256);
-            ctx.moveTo(0, 128); ctx.lineTo(256, 128);
-            ctx.stroke();
-            
-            return new THREE.CanvasTexture(canvas);
+        function createCourtyardLamp(x, y, z) {
+            const lampGroup = new THREE.Group();
+            const poleGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.5, 8);
+            const poleMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.9, roughness: 0.5 });
+            const pole = new THREE.Mesh(poleGeo, poleMat);
+            pole.position.y = 0.75;
+            lampGroup.add(pole);
+            const headGeo = new THREE.SphereGeometry(0.2, 16, 8);
+            const headMat = new THREE.MeshStandardMaterial({ color: 0xffffdd, emissive: 0xffffaa, emissiveIntensity: 1 });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.y = 1.5;
+            lampGroup.add(head);
+            const pointLight = new THREE.PointLight(0xfff0d1, 2, 8);
+            pointLight.position.y = 1.5;
+            pointLight.castShadow = true; 
+            lampGroup.add(pointLight);
+            lampGroup.position.set(x, y, z);
+            lampGroup.castShadow = true;
+            scene.add(lampGroup);
+            stageObjects.push(lampGroup);
+        }
+        
+        function createStreetLight(x, y, z) {
+            const lightGroup = new THREE.Group();
+            const poleMat = new THREE.MeshStandardMaterial({ color: 0x4B4B4B, metalness: 0.9, roughness: 0.5 });
+            const poleGeo = new THREE.CylinderGeometry(0.1, 0.15, 3.5, 8);
+            const pole = new THREE.Mesh(poleGeo, poleMat);
+            pole.position.y = 1.75;
+            pole.castShadow = true;
+            lightGroup.add(pole);
+            const armGeo = new THREE.BoxGeometry(0.15, 0.15, 1);
+            const arm = new THREE.Mesh(armGeo, poleMat);
+            arm.position.set(0, 3.3, 0.5);
+            lightGroup.add(arm);
+            const lampHeadMat = new THREE.MeshStandardMaterial({ color: 0xffffdd, emissive: 0xffffaa, emissiveIntensity: 1.5 });
+            const lampHeadGeo = new THREE.BoxGeometry(0.3, 0.2, 0.3);
+            const lampHead = new THREE.Mesh(lampHeadGeo, lampHeadMat);
+            lampHead.position.set(0, 3.1, 0.85);
+            lightGroup.add(lampHead);
+            const pointLight = new THREE.PointLight(0xfff0d1, 0.01, 15);
+            pointLight.position.set(0, 3.0, 0.85);
+            pointLight.castShadow = false;
+            lightGroup.add(pointLight);
+            lightGroup.position.set(x, y, z);
+            scene.add(lightGroup);
+            stageObjects.push(lightGroup);
+            return lightGroup;
         }
 
         function setupStage0_Warmup() { 
@@ -1501,10 +1853,10 @@
                 const textMesh = new THREE.Mesh(textGeo, textMaterial); 
                 textMesh.position.set(-0.5 * (textGeo.boundingBox.max.x - textGeo.boundingBox.min.x), 4, 0);
                 textMesh.castShadow = true; 
-                textMesh.name = "welcome_text"; 
+                textMesh.name = "welcome_text";
+                animatedObjects.push({ userData: { animation: (time) => { textMesh.position.y = 4 + Math.sin(time * 1.5) * 0.2; textMesh.rotation.y = Math.sin(time * 0.5) * 0.2; } } });
                 scene.add(textMesh); 
                 stageObjects.push(textMesh); 
-                animatedObjects.push(textMesh); 
 
                 createWasdTrainingArea(font);
                 
@@ -1534,11 +1886,11 @@
             
             let countdown = 30;
             warmupTimerDisplayElement.style.display = 'block';
-            warmupTimerDisplayElement.textContent = `第一关挑战倒计时: ${countdown}s`;
+            warmupTimerDisplayElement.textContent = `第一关训练倒计时: ${countdown}s`;
 
             warmupCountdownInterval = setInterval(() => {
                 countdown--;
-                warmupTimerDisplayElement.textContent = `第一关挑战倒计时: ${countdown}s`;
+                warmupTimerDisplayElement.textContent = `第一关训练倒计时: ${countdown}s`;
 
                 if (countdown <= 0) {
                     clearInterval(warmupCountdownInterval);
@@ -1688,7 +2040,6 @@
         }
 
         function setupStage1_Look() { camera.position.set(0, playerHeight, 5); camera.quaternion.set(0, 0, 0, 1); euler.set(0, 0, 0, 'YXZ'); createFloor(20, 20); createWall(0, 2.5, -10, 20, 5, 0.2); createWall(0, 2.5, 10, 20, 5, 0.2); createWall(-10, 2.5, 0, 0.2, 5, 20); createWall(10, 2.5, 0, 0.2, 5, 20); const targetPositions = [new THREE.Vector3(0, 1.5, -8), new THREE.Vector3(8, 2, 0), new THREE.Vector3(-7, 1, 3), new THREE.Vector3(0, 3, 8)]; targetPositions.forEach(pos => { const targetGeo = new THREE.SphereGeometry(0.5, 32, 32); const targetMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x550000 }); const target = new THREE.Mesh(targetGeo, targetMat); target.position.copy(pos); target.userData.isTarget = true; scene.add(target); stageObjects.push(target); stage1Targets.push(target); }); updateInstructions(); }
-        function setupStage2_Forward() { camera.position.set(0, playerHeight, 18); camera.quaternion.set(0, 0, 0, 1); euler.set(0, 0, 0, 'YXZ'); createFloor(10, 40); createWall(-5, 2.5, 0, 0.2, 5, 40); createWall(5, 2.5, 0, 0.2, 5, 40); createWall(0, 2.5, 20, 10, 5, 0.2); createWall(0, 2.5, -20, 10, 5, 0.2); createFinishFlag(0, 0, -19); }
         
         function setupShuttleRunLevel(isMoving, speed) {
             camera.position.set(0, playerHeight, 0);
@@ -1699,7 +2050,16 @@
             scene.fog = new THREE.Fog(0x4a4a6a, 0, 100);
             
             const mapSize = 80;
-            createFloor(mapSize, mapSize);
+            
+            shuttleRunFloorTexture.repeat.set(mapSize / 16, mapSize / 16);
+            shuttleRunFloorTexture.needsUpdate = true;
+            const floorMaterial = new THREE.MeshStandardMaterial({
+                map: shuttleRunFloorTexture,
+                metalness: 0,
+                roughness: 0.8
+            });
+            createFloor(mapSize, mapSize, floorMaterial);
+
             createPillarsForShuttleRun(20, mapSize / 2 - 5);
             createShuttleRunWalls(mapSize); 
 
@@ -1744,74 +2104,36 @@
             activateNextShuttleTarget();
         }
 
-        // MODIFIED: createShuttleRunWalls to use only stone and metal
         function createShuttleRunWalls(mapSize) {
             const wallHeight = 20;
 
-            function createStoneTexture() {
-                const canvas = document.createElement('canvas');
-                canvas.width = 256; canvas.height = 256;
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = '#888'; ctx.fillRect(0, 0, 256, 256);
-                for (let i = 0; i < 60; i++) {
-                    const x = Math.random() * 256; const y = Math.random() * 256;
-                    const rX = Math.random() * 20 + 15; const rY = Math.random() * 20 + 15;
-                    const color = Math.floor(Math.random() * 40) + 90;
-                    ctx.fillStyle = `rgb(${color},${color},${color})`;
-                    ctx.beginPath(); ctx.ellipse(x, y, rX, rY, Math.random() * Math.PI, 0, 2 * Math.PI); ctx.fill();
+            shuttleRunWallMaterials.forEach(mat => {
+                if (mat.map) {
+                    mat.map.repeat.set(mapSize / 10, wallHeight / 10);
+                    mat.map.needsUpdate = true;
                 }
-                return new THREE.CanvasTexture(canvas);
-            }
-
-            function createMetalTexture() {
-                const canvas = document.createElement('canvas');
-                canvas.width = 256; canvas.height = 256;
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = '#4a4a52'; ctx.fillRect(0, 0, 256, 256);
-                ctx.strokeStyle = '#686870'; ctx.lineWidth = 3;
-                ctx.beginPath(); ctx.moveTo(128, 0); ctx.lineTo(128, 256); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(0, 128); ctx.lineTo(256, 128); ctx.stroke();
-                ctx.fillStyle = '#787880';
-                for (let i = 0; i < 4; i++) {
-                    const cornerX = (i % 2) * 128; const cornerY = Math.floor(i / 2) * 128;
-                    ctx.beginPath(); ctx.arc(cornerX + 8, cornerY + 8, 3, 0, Math.PI * 2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(cornerX + 120, cornerY + 8, 3, 0, Math.PI * 2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(cornerX + 8, cornerY + 120, 3, 0, Math.PI * 2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(cornerX + 120, cornerY + 120, 3, 0, Math.PI * 2); ctx.fill();
-                }
-                return new THREE.CanvasTexture(canvas);
-            }
-
-            const textures = [createStoneTexture(), createMetalTexture()];
-            const materials = [];
-
-            textures.forEach((tex, index) => {
-                tex.wrapS = THREE.RepeatWrapping;
-                tex.wrapT = THREE.RepeatWrapping;
-                tex.repeat.set(mapSize / 10, wallHeight / 10);
-                materials.push(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, metalness: index === 1 ? 0.6 : 0.1 }));
             });
 
             const wallGeo = new THREE.PlaneGeometry(mapSize, wallHeight);
             
-            const wall1 = new THREE.Mesh(wallGeo, materials[0]); // Stone
+            const wall1 = new THREE.Mesh(wallGeo, shuttleRunWallMaterials[0]); // Stone
             wall1.position.set(0, wallHeight / 2, -mapSize / 2);
             scene.add(wall1);
             collidables.push(wall1);
 
-            const wall2 = new THREE.Mesh(wallGeo, materials[0]); // Stone
+            const wall2 = new THREE.Mesh(wallGeo, shuttleRunWallMaterials[0]); // Stone
             wall2.position.set(0, wallHeight / 2, mapSize / 2);
             wall2.rotation.y = Math.PI;
             scene.add(wall2);
             collidables.push(wall2);
             
-            const wall3 = new THREE.Mesh(wallGeo, materials[1]); // Metal
+            const wall3 = new THREE.Mesh(wallGeo, shuttleRunWallMaterials[1]); // Metal
             wall3.position.set(mapSize / 2, wallHeight / 2, 0);
             wall3.rotation.y = -Math.PI / 2;
             scene.add(wall3);
             collidables.push(wall3);
 
-            const wall4 = new THREE.Mesh(wallGeo, materials[1]); // Metal
+            const wall4 = new THREE.Mesh(wallGeo, shuttleRunWallMaterials[1]); // Metal
             wall4.position.set(-mapSize / 2, wallHeight / 2, 0);
             wall4.rotation.y = Math.PI / 2;
             scene.add(wall4);
@@ -1926,7 +2248,12 @@
             const corridorLength = 100;
             const corridorWidth = 30;
             
-            createFloor(corridorWidth, corridorLength);
+            missionCorridorFloorTexture.repeat.set(corridorWidth / 4, corridorLength / 4);
+            missionCorridorFloorTexture.needsUpdate = true;
+            const floorMaterial = new THREE.MeshStandardMaterial({
+                map: missionCorridorFloorTexture,
+            });
+            createFloor(corridorWidth, corridorLength, floorMaterial);
             createFinishFlag(0, 0, -49);
 
             const allTargets = [];
@@ -2014,7 +2341,15 @@
             camera.position.set(0, playerHeight, 18);
             camera.quaternion.set(0, 0, 0, 1);
             euler.set(0, 0, 0, 'YXZ');
-            createFloor(40, 40);
+            
+            stonePathTexture.repeat.set(5, 5);
+            stonePathTexture.needsUpdate = true;
+            const floorMaterial = new THREE.MeshStandardMaterial({
+                map: stonePathTexture,
+                roughness: 0.8
+            });
+            createFloor(40, 40, floorMaterial);
+
             createWall(0, 2.5, 20, 40, 5, 0.2);
             createWall(0, 2.5, -20, 40, 5, 0.2);
             createWall(20, 2.5, 0, 0.2, 5, 40);
@@ -2046,7 +2381,6 @@
         function setupStage8_Jump() { camera.position.set(0, playerHeight, 18); camera.quaternion.set(0, 0, 0, 1); euler.set(0, 0, 0, 'YXZ'); const pathWidth = 4; createFloor(pathWidth, 40); createWall(-pathWidth/2, 2.5, 0, 0.2, 5, 40); createWall(pathWidth/2, 2.5, 0, 0.2, 5, 40); createWall(0, 2.5, 20, pathWidth, 5, 0.2); const obstacleHeight = 1.5; const obstacleY = obstacleHeight / 2; createWall(0, obstacleY, 12, pathWidth, obstacleHeight, 2, 0xff8c00); createWall(0, obstacleY, 6, pathWidth, obstacleHeight, 2, 0xff8c00); createWall(0, obstacleY, 0, pathWidth, obstacleHeight, 2, 0xff8c00); createWall(0, obstacleY, -6, pathWidth, obstacleHeight, 2, 0xff8c00); createWall(0, obstacleY, -12, pathWidth, obstacleHeight, 2, 0xff8c00); createFinishFlag(0, 0, -19); }
         function setupStage9_Skills() { camera.position.set(0, playerHeight, 23); camera.quaternion.set(0, 0, 0, 1); euler.set(0, 0, 0, 'YXZ'); const pathWidth = 4; const pathLength = 50; createFloor(pathWidth, pathLength); createWall(-pathWidth/2, 2.5, 0, 0.2, 5, pathLength); createWall(pathWidth/2, 2.5, 0, 0.2, 5, pathLength); createWall(0, 2.5, pathLength/2, pathWidth, 5, 0.2); const jumpHeight = 1.5; const jumpY = jumpHeight / 2; const crouchBarrierHeight = 1.5; const crouchBarrierY = 2.25; createWall(0, jumpY, 20, pathWidth, jumpHeight, 0.5, 0xff8c00); createWall(0, crouchBarrierY, 15, pathWidth, crouchBarrierHeight, 0.5, 0x708090); createWall(0, jumpY, 10, pathWidth, jumpHeight, 0.5, 0xff8c00); createWall(0, jumpY, 5, pathWidth, jumpHeight, 0.5, 0xff8c00); createWall(0, crouchBarrierY, 0, pathWidth, crouchBarrierHeight, 0.5, 0x708090); createWall(0, crouchBarrierY, -5, pathWidth, crouchBarrierHeight, 0.5, 0x708090); createWall(0, jumpY, -10, pathWidth, jumpHeight, 0.5, 0xff8c00); createWall(0, crouchBarrierY, -15, pathWidth, crouchBarrierHeight, 0.5, 0x708090); createFinishFlag(0, 0, -24); }
         
-        // MODIFIED: All three maze functions now use a shared metal texture for walls
         function setupTimedMazeLevel(mazeLayout) {
             const cellSize = 5;
             const wallHeight = 4;
@@ -2059,17 +2393,23 @@
             let endPos = new THREE.Vector3();
             const offsetX = -mapWidth / 2;
             const offsetZ = -mapLength / 2;
-            createFloor(mapWidth, mapLength);
-
-            const mazeWallTexture = createMazeWallTexture();
-            mazeWallTexture.wrapS = THREE.RepeatWrapping;
-            mazeWallTexture.wrapT = THREE.RepeatWrapping;
-            mazeWallTexture.repeat.set(cellSize / 4, wallHeight / 4);
-            const mazeWallMaterial = new THREE.MeshStandardMaterial({
-                map: mazeWallTexture,
-                metalness: 0.7,
-                roughness: 0.3
+            
+            stonePathTexture.repeat.set(mapWidth / 4, mapLength / 4);
+            stonePathTexture.needsUpdate = true;
+            const floorMaterial = new THREE.MeshStandardMaterial({
+                map: stonePathTexture,
+                roughness: 0.9,
             });
+            createFloor(mapWidth, mapLength, floorMaterial);
+
+            let startCoords = { r: -1, c: -1 };
+            let endCoords = { r: -1, c: -1 };
+            for (let i = 0; i < mazeRows; i++) {
+                for (let j = 0; j < mazeCols; j++) {
+                    if (mazeLayout[i][j] === 'S') startCoords = { r: i, c: j };
+                    if (mazeLayout[i][j] === 'E') endCoords = { r: i, c: j };
+                }
+            }
 
             const wallGeo = new THREE.BoxGeometry(cellSize, wallHeight, cellSize);
 
@@ -2078,18 +2418,36 @@
                     const x = j * cellSize + offsetX + cellSize / 2;
                     const z = i * cellSize + offsetZ + cellSize / 2;
                     const cell = mazeLayout[i][j];
+
+                    if (cell === 1) { 
+                        const wall = new THREE.Mesh(wallGeo, mazeWallMaterial);
+                        wall.position.set(x, wallY, z);
+                        wall.receiveShadow = true;
+                        wall.castShadow = true;
+                        scene.add(wall);
+                        stageObjects.push(wall);
+                        collidables.push(wall);
+                    } else {
+                        const distToStart = Math.sqrt(Math.pow(i - startCoords.r, 2) + Math.pow(j - startCoords.c, 2));
+                        const distToEnd = Math.sqrt(Math.pow(i - endCoords.r, 2) + Math.pow(j - endCoords.c, 2));
+                        
+                        const isWall = (r, c) => (r < 0 || r >= mazeRows || c < 0 || c >= mazeCols || mazeLayout[r][c] === 1);
+                        const wallUp = isWall(i - 1, j);
+                        const wallDown = isWall(i + 1, j);
+                        const wallLeft = isWall(i, j - 1);
+                        const wallRight = isWall(i, j + 1);
+                        const wallCount = (wallUp ? 1:0) + (wallDown ? 1:0) + (wallLeft ? 1:0) + (wallRight ? 1:0);
+
+                        if ((wallCount === 3 || (wallCount === 2 && !(wallUp && wallDown) && !(wallLeft && wallRight))) && distToStart > 1.5 && distToEnd > 1.5 ) {
+                            const lightX = x + (Math.random() - 0.5) * cellSize * 0.2;
+                            const lightZ = z + (Math.random() - 0.5) * cellSize * 0.2;
+                            createStreetLight(lightX, 0, lightZ);
+                        }
+                    }
+
                     switch (cell) {
-                        case 1: 
-                            const wall = new THREE.Mesh(wallGeo, mazeWallMaterial);
-                            wall.position.set(x, wallY, z);
-                            wall.receiveShadow = true;
-                            wall.castShadow = true;
-                            scene.add(wall);
-                            stageObjects.push(wall);
-                            collidables.push(wall);
-                            break;
                         case 'S': startPos.set(x, playerHeight, z); break;
-                        case 'E': endPos.set(x, 0, z); createFinishFlag(x, 0, z); break;
+                        case 'E': endPos.set(x, 0, z); createHeartBalloon(x, 0, z); break;
                         case 'J': createWall(x, 0.75, z, cellSize, 1.5, cellSize, 0xff8c00); break;
                         case 'C': createWall(x, 2.25, z, cellSize, 1.5, cellSize, 0x708090); break;
                     }
@@ -2117,17 +2475,22 @@
             let startPos = new THREE.Vector3();
             const offsetX = -mapWidth / 2;
             const offsetZ = -mapLength / 2;
-            createFloor(mapWidth, mapLength);
-
-            const mazeWallTexture = createMazeWallTexture();
-            mazeWallTexture.wrapS = THREE.RepeatWrapping;
-            mazeWallTexture.wrapT = THREE.RepeatWrapping;
-            mazeWallTexture.repeat.set(cellSize / 4, wallHeight / 4);
-            const mazeWallMaterial = new THREE.MeshStandardMaterial({
-                map: mazeWallTexture,
-                metalness: 0.7,
-                roughness: 0.3
+            
+            stonePathTexture.repeat.set(mapWidth / 4, mapLength / 4);
+            stonePathTexture.needsUpdate = true;
+            const floorMaterial = new THREE.MeshStandardMaterial({
+                map: stonePathTexture,
+                roughness: 0.9
             });
+            createFloor(mapWidth, mapLength, floorMaterial);
+
+            let startCoords = { r: -1, c: -1 };
+            for (let i = 0; i < mazeRows; i++) {
+                for (let j = 0; j < mazeCols; j++) {
+                    if (mazeLayout[i][j] === 'S') startCoords = { r: i, c: j };
+                }
+            }
+
             const wallGeo = new THREE.BoxGeometry(cellSize, wallHeight, cellSize);
 
             for (let i = 0; i < mazeRows; i++) {
@@ -2135,16 +2498,33 @@
                     const x = j * cellSize + offsetX + cellSize / 2;
                     const z = i * cellSize + offsetZ + cellSize / 2;
                     const cell = mazeLayout[i][j];
+
+                    if (cell === 1) {
+                        const wall = new THREE.Mesh(wallGeo, mazeWallMaterial);
+                        wall.position.set(x, wallY, z);
+                        wall.receiveShadow = true;
+                        wall.castShadow = true;
+                        scene.add(wall);
+                        stageObjects.push(wall);
+                        collidables.push(wall);
+                    } else {
+                        const distToStart = Math.sqrt(Math.pow(i - startCoords.r, 2) + Math.pow(j - startCoords.c, 2));
+                        
+                        const isWall = (r, c) => (r < 0 || r >= mazeRows || c < 0 || c >= mazeCols || mazeLayout[r][c] === 1);
+                        const wallUp = isWall(i - 1, j);
+                        const wallDown = isWall(i + 1, j);
+                        const wallLeft = isWall(i, j - 1);
+                        const wallRight = isWall(i, j + 1);
+                        const wallCount = (wallUp ? 1:0) + (wallDown ? 1:0) + (wallLeft ? 1:0) + (wallRight ? 1:0);
+
+                        if ((wallCount === 3 || (wallCount === 2 && !(wallUp && wallDown) && !(wallLeft && wallRight))) && distToStart > 1.5) {
+                            const lightX = x + (Math.random() - 0.5) * cellSize * 0.2;
+                            const lightZ = z + (Math.random() - 0.5) * cellSize * 0.2;
+                            createStreetLight(lightX, 0, lightZ);
+                        }
+                    }
+
                     switch (cell) {
-                        case 1:
-                            const wall = new THREE.Mesh(wallGeo, mazeWallMaterial);
-                            wall.position.set(x, wallY, z);
-                            wall.receiveShadow = true;
-                            wall.castShadow = true;
-                            scene.add(wall);
-                            stageObjects.push(wall);
-                            collidables.push(wall);
-                            break;
                         case 'S': startPos.set(x, playerHeight, z); break;
                         case 'N': const npc = createCapsule(0.4, 1.8, 0x0099ff); npc.position.set(x, 0.9, z); scene.add(npc); npcs.push(npc); stageObjects.push(npc); break;
                         case 'J': createWall(x, 0.75, z, cellSize, 1.5, cellSize, 0xff8c00); break;
@@ -2176,42 +2556,81 @@
             let startPos = new THREE.Vector3();
             const offsetX = -mapWidth / 2;
             const offsetZ = -mapLength / 2;
-            createFloor(mapWidth, mapLength);
-
-            const mazeWallTexture = createMazeWallTexture();
-            mazeWallTexture.wrapS = THREE.RepeatWrapping;
-            mazeWallTexture.wrapT = THREE.RepeatWrapping;
-            mazeWallTexture.repeat.set(cellSize / 4, wallHeight / 4);
-            const mazeWallMaterial = new THREE.MeshStandardMaterial({
-                map: mazeWallTexture,
-                metalness: 0.7,
-                roughness: 0.3
+            
+            stonePathTexture.repeat.set(mapWidth / 4, mapLength / 4);
+            stonePathTexture.needsUpdate = true;
+            const floorMaterial = new THREE.MeshStandardMaterial({
+                map: stonePathTexture,
+                roughness: 0.9
             });
+            createFloor(mapWidth, mapLength, floorMaterial);
+
+            let startCoords = { r: -1, c: -1 };
+            for (let i = 0; i < mazeRows; i++) {
+                for (let j = 0; j < mazeCols; j++) {
+                    if (mazeLayout[i][j] === 'S') {
+                        startCoords = { r: i, c: j };
+                        break; 
+                    }
+                }
+                if (startCoords.r !== -1) break;
+            }
+
             const wallGeo = new THREE.BoxGeometry(cellSize, wallHeight, cellSize);
 
             let landmarkCounter = 1;
+            const minDistFromStart = 3.5;
+
             for (let i = 0; i < mazeRows; i++) {
                 for (let j = 0; j < mazeCols; j++) {
                     const x = j * cellSize + offsetX + cellSize / 2;
                     const z = i * cellSize + offsetZ + cellSize / 2;
                     const cell = mazeLayout[i][j];
+
+                    if (cell === 1) {
+                        const wall = new THREE.Mesh(wallGeo, mazeWallMaterial);
+                        wall.position.set(x, wallY, z);
+                        wall.receiveShadow = true;
+                        wall.castShadow = true;
+                        scene.add(wall);
+                        stageObjects.push(wall);
+                        collidables.push(wall);
+                    } else {
+                        const distToStart = Math.sqrt(Math.pow(i - startCoords.r, 2) + Math.pow(j - startCoords.c, 2));
+                        const isWall = (r, c) => (r < 0 || r >= mazeRows || c < 0 || c >= mazeCols || mazeLayout[r][c] === 1);
+                        const wallUp = isWall(i - 1, j);
+                        const wallDown = isWall(i + 1, j);
+                        const wallLeft = isWall(i, j - 1);
+                        const wallRight = isWall(i, j + 1);
+                        const wallCount = (wallUp ? 1:0) + (wallDown ? 1:0) + (wallLeft ? 1:0) + (wallRight ? 1:0);
+
+                       if ((wallCount === 3 || (wallCount === 2 && !(wallUp && wallDown) && !(wallLeft && wallRight))) && distToStart > 1.5 && cell !== 'L' && cell !== 'T') {
+                            const lightX = x + (Math.random() - 0.5) * cellSize * 0.2;
+                            const lightZ = z + (Math.random() - 0.5) * cellSize * 0.2;
+                            createStreetLight(lightX, 0, lightZ);
+                        }
+                    }
+
                      switch (cell) {
-                        case 1:
-                            const wall = new THREE.Mesh(wallGeo, mazeWallMaterial);
-                            wall.position.set(x, wallY, z);
-                            wall.receiveShadow = true;
-                            wall.castShadow = true;
-                            scene.add(wall);
-                            stageObjects.push(wall);
-                            collidables.push(wall);
-                            break;
                         case 'S': startPos.set(x, playerHeight, z); break;
                         case 'L': createLandmark(x, z, landmarkCounter++); break;
                         case 'J': createWall(x, 0.75, z, cellSize, 1.5, cellSize, 0xff8c00); break;
                         case 'C': createWall(x, 2.25, z, cellSize, 1.5, cellSize, 0x708090); break;
+                        case 'T':
+                            const dist = Math.sqrt(Math.pow(i - startCoords.r, 2) + Math.pow(j - startCoords.c, 2));
+                            if (dist > minDistFromStart) {
+                                createTurret(x, z);
+                            }
+                            break;
                     }
                 }
             }
+            
+            if (landmarks.length > 0) {
+                const lastLandmark = landmarks[landmarks.length - 1];
+                createHeartBalloon(lastLandmark.position.x, lastLandmark.position.y, lastLandmark.position.z);
+            }
+
             camera.position.copy(startPos);
             camera.quaternion.set(0, 0, 0, 1);
             euler.set(0, Math.PI, 0, 'YXZ');
@@ -2239,8 +2658,17 @@
         function setupStage17_Landmark1() { const layout = [[1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 'S', 0, 0, 1, 'C', 0, 'L', 1], [1, 1, 1, 0, 1, 0, 1, 1, 1], [1, 0, 'J', 0, 0, 0, 0, 0, 1], [1, 0, 1, 1, 1, 1, 1, 0, 1], [1, 0, 0, 0, 0, 0, 1, 0, 1], [1, 1, 'L', 1, 1, 'J', 1, 0, 1], [1, 'C', 0, 0, 0, 0, 0, 0, 1], [1, 1, 1, 1, 1, 1, 1, 1, 1]]; setupLandmarkMazeLevel(layout); }
         function setupStage18_Landmark2() { const layout = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 'S', 0, 0, 0, 1, 'L', 0, 'J', 0, 1], [1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1], [1, 0, 0, 'C', 0, 0, 0, 1, 0, 1, 1], [1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1], [1, 0, 1, 0, 0, 0, 0, 1, 1, 'L', 1], [1, 'L', 1, 0, 1, 1, 0, 0, 'C', 0, 1], [1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 1], [1, 0, 'J', 0, 1, 0, 1, 0, 0, 0, 1], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]; setupLandmarkMazeLevel(layout); }
         function setupStage19_Landmark3() { const layout = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 'S', 0, 1, 0, 0, 0, 1, 'J', 0, 0, 'L', 1], [1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1], [1, 0, 0, 'L', 0, 1, 'C', 0, 0, 1, 0, 0, 1], [1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1], [1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], [1, 0, 1, 1, 1, 1, 'L', 1, 1, 1, 1, 0, 1], [1, 0, 1, 'J', 0, 0, 0, 0, 0, 0, 1, 0, 1], [1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 'L', 1], [1, 0, 0, 0, 'C', 0, 0, 0, 0, 0, 0, 0, 1], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]; setupLandmarkMazeLevel(layout); }
+        function setupStage17_Landmark1_2() { const layout = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],[1, 'S', 0, 0, 0, 1, 0, 0, 'L', 1],[1, 1, 1, 0, 1, 1, 0, 1, 0, 1],[1, 0, 0, 0, 1, 0, 0, 1, 0, 1],[1, 0, 1, 1, 1, 0, 1, 1, 0, 1],[1, 0, 1, 0, 0, 0, 1, 0, 0, 1],[1, 'L', 1, 0, 1, 0, 1, 0, 1, 1],[1, 0, 0, 0, 1, 0, 0, 0, 0, 1],[1, 0, 1, 'L', 1, 1, 1, 1, 0, 1],[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]; setupLandmarkMazeLevel(layout); }
+        function setupStage18_Landmark2_2() { const layout = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],[1, 'S', 0, 0, 0, 1, 0, 0, 0, 'L', 1],[1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1],[1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1],[1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1],[1, 'L', 0, 0, 1, 'L', 1, 0, 0, 0, 1],[1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1],[1, 0, 0, 0, 0, 0, 0, 0, 1, 'L', 1],[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]; setupLandmarkMazeLevel(layout); }
+        function setupStage19_Landmark3_2() { const layout = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],[1, 'S', 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],[1, 1, 1, 0, 1, 1, 1, 0, 1, 'L', 1, 0, 1],[1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1],[1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 'L', 1],[1, 0, 1, 'L', 1, 0, 0, 0, 0, 0, 1, 0, 1],[1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1],[1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],[1, 1, 1, 1, 1, 'L', 1, 0, 1, 1, 1, 0, 1],[1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],[1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 'L', 1],[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]; setupLandmarkMazeLevel(layout); }
         
-        function setupStage20_Final() {
+        function setupStage22_TurretMaze1() { const layout = [[1,1,1,1,1,1,1,1,1,1],[1,'S',0,0,1,'T',0,0,0,1],[1,1,1,0,1,0,1,1,0,1],[1,0,0,0,0,0,1,0,'L',1],[1,0,1,'T',1,1,1,0,1,1],[1,0,0,1,0,0,0,0,0,1],[1,1,0,1,'T',1,0,1,'T',1],[1,0,0,0,0,0,0,0,0,1],[1,'L',0,0,1,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,1]]; setupLandmarkMazeLevel(layout); }
+        function setupStage23_TurretMaze2() { const layout = [[1,1,1,1,1,1,1,1,1,1,1],[1,'S',0,0,1,0,0,'T',0,0,1],[1,1,1,0,1,'T',1,1,1,0,1],[1,'L',0,0,0,0,0,0,0,'L',1],[1,1,1,1,0,1,1,1,1,1,1],[1,'T',0,0,0,'T',0,0,0,'T',1],[1,1,1,1,1,1,0,1,1,1,1],[1,0,0,0,0,0,0,0,0,0,1],[1,0,1,1,1,1,1,1,1,'L',1],[1,'T',0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1]]; setupLandmarkMazeLevel(layout); }
+        function setupStage24_TurretMaze3() { const layout = [[1,1,1,1,1,1,1,1,1,1,1,1,1],[1,'S',0,0,0,1,'T',0,0,0,1,0,1],[1,1,'T',1,0,1,0,1,1,0,1,0,1],[1,0,0,0,0,1,0,0,'L',0,1,'T',1],[1,0,1,1,1,1,1,0,1,0,1,0,1],[1,0,'L',0,0,0,1,0,'T',0,0,0,1],[1,1,1,1,1,0,1,1,1,1,1,0,1],[1,'T',0,0,0,0,0,0,'L',0,0,0,1],[1,0,1,1,1,1,1,0,1,1,'T',1,1],[1,0,0,0,0,0,0,0,0,0,0,0,1],[1,'L',0,'T',1,0,1,1,1,1,1,0,1],[1,0,0,0,0,0,0,0,0,0,'T',0,1],[1,1,1,1,1,1,1,1,1,1,1,1,1]]; setupLandmarkMazeLevel(layout); }
+        function setupStage25_TurretMaze4() { const layout = [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,'S',0,0,1,0,0,1,0,0,1,0,'T',0,1],[1,1,1,0,1,0,1,1,'T',0,1,0,1,0,1],[1,0,0,0,1,0,'L',0,1,0,1,0,0,0,1],[1,0,1,1,1,1,1,0,1,0,1,1,1,0,1],[1,0,'T',0,0,0,0,0,1,0,0,0,1,0,1],[1,1,1,1,0,1,1,1,1,1,0,1,1,'L',1],[1,'L',0,0,0,0,'T',0,0,0,0,0,0,0,1],[1,1,1,0,1,1,1,1,1,1,1,1,0,1,1],[1,'T',0,0,0,1,0,0,0,0,0,0,'T',0,1],[1,0,1,1,1,1,0,1,1,1,1,0,1,0,1],[1,0,'L',0,0,0,0,1,'T',0,0,0,1,0,1],[1,0,1,1,1,1,1,1,0,1,1,1,1,'L',1],[1,'T',0,0,0,0,0,0,0,0,'T',0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]]; setupLandmarkMazeLevel(layout); }
+        function setupStage26_TurretMaze5() { const layout = [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,'S',0,'T',0,0,1,0,0,1,0,0,0,0,1],[1,0,1,1,1,0,1,0,1,1,0,1,1,0,1],[1,0,'L',0,0,0,1,0,'T',0,0,0,0,'L',1],[1,1,1,1,1,0,1,1,1,0,0,0,0,0,1],[1,'T',0,0,0,0,0,0,0,0,1,0,0,0,1],[1,0,1,1,1,1,1,1,1,0,1,1,1,1,1],[1,0,'L',0,0,0,1,0,'T',0,0,0,0,'T',1],[1,1,1,1,1,0,1,0,1,1,1,1,0,1,1],[1,'T',0,0,0,0,1,0,'L',0,0,0,0,0,1],[1,0,1,1,1,1,1,1,1,1,1,1,1,0,1],[1,0,'T',0,0,0,0,0,0,0,1,0,0,0,1],[1,0,1,1,1,1,1,1,1,0,1,'T',1,'L',1],[1,0,'L',0,'T',0,0,0,0,0,1,0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]]; setupLandmarkMazeLevel(layout); }
+
+        function setupStage_Final() {
             camera.position.set(0, playerHeight, 8);
             camera.lookAt(0, playerHeight, 0);
             euler.setFromQuaternion(camera.quaternion, 'YXZ');
@@ -2257,18 +2685,19 @@
             const maxStars = Object.keys(starTimeThresholds).length * 3;
             let rank, rankColor, encouragementMessage;
             if (totalStarsEarned >= maxStars * (2/3)) {
-                rank = '冠军<br><span class="podium-rank-en">Champion</span>';
+                rank = '认知大师<br><span class="podium-rank-en">Cognitive Master</span>';
                 rankColor = '#ffd700';
-                encouragementMessage = `太厉害了！您以绝对的优势完成了所有挑战，您就是我们的操作冠军！<br><span class="en">Amazing! You've completed all challenges with a clear advantage to become our champion!</span>`;
+                encouragementMessage = `太厉害了！您已精通所有认知挑战，展现了卓越的综合能力！<br><span class="en">Amazing! You've mastered all cognitive challenges, demonstrating outstanding comprehensive abilities!</span>`;
             } else if (totalStarsEarned >= maxStars * (1/3)) {
-                rank = '亚军<br><span class="podium-rank-en">Runner-up</span>';
+                rank = '认知专家<br><span class="podium-rank-en">Cognitive Expert</span>';
                 rankColor = '#c0c0c0';
-                encouragementMessage = `非常出色！您掌握了大部分操作技巧，获得了亚军的荣誉！<br><span class="en">Excellent work! You've mastered most skills to earn the runner-up honor!</span>`;
+                encouragementMessage = `非常出色！您掌握了绝大部分认知技巧，获得了高级认证！<br><span class="en">Excellent work! You've mastered most cognitive skills and earned an advanced certification!</span>`;
             } else {
-                rank = '季军<br><span class="podium-rank-en">Bronze</span>';
+                rank = '认知学徒<br><span class="podium-rank-en">Cognitive Apprentice</span>';
                 rankColor = '#cd7f32';
-                encouragementMessage = `恭喜您完成了所有训练，并登上了季军的领奖台！每一步都是了不起的成就！<br><span class="en">Congratulations on completing all the training and reaching the podium! Every step is a great achievement!</span>`;
+                encouragementMessage = `恭喜您完成了所有训练，获得了基础能力认证！每一步都是了不起的进步！<br><span class="en">Congratulations on completing all the training and receiving a basic certification! Every step is great progress!</span>`;
             }
+            document.getElementById('results-title').textContent = '综合能力认证 / Cognitive Mastery';
             document.getElementById('player-final-title').innerHTML = `祝贺您, ${playerProfile.title}!<br><span style="font-size:16px; color: #ccc;">Congratulations, ${playerProfile.title}!</span>`;
             document.getElementById('encouragement-message').innerHTML = encouragementMessage;
             const podium1 = document.getElementById('podium-1');
@@ -2278,9 +2707,9 @@
             podium2.innerHTML = `<div class="podium-rank">2</div>`;
             podium3.innerHTML = `<div class="podium-rank">3</div>`;
             const playerPodiumHTML = `<div class="podium-rank" style="color:${rankColor};">${rank}</div><div class="podium-stars">${totalStarsEarned} ★</div>`;
-            if (rank.includes('Champion')) {
+            if (rank.includes('Master')) {
                 podium1.innerHTML = playerPodiumHTML;
-            } else if (rank.includes('Runner-up')) {
+            } else if (rank.includes('Expert')) {
                 podium2.innerHTML = playerPodiumHTML;
             } else {
                 podium3.innerHTML = playerPodiumHTML;
@@ -2290,7 +2719,6 @@
             if (document.pointerLockElement) document.exitPointerLock();
         }
         
-        // --- Shooting System Functions ---
         function createToyGun() {
             toyGun = new THREE.Group();
             const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4a90e2, roughness: 0.4, metalness: 0.1 });
@@ -2327,7 +2755,10 @@
             const muzzle = toyGun.children[2];
             muzzle.getWorldPosition(muzzlePosition);
             raycaster.setFromCamera(centerScreen, camera);
-            const intersects = raycaster.intersectObjects(collidables, true);
+            
+            const shootableObjects = [...collidables, ...turrets.map(t => t.children).flat()];
+            const intersects = raycaster.intersectObjects(shootableObjects, true);
+
             let targetPosition;
             if (intersects.length > 0) {
                 targetPosition = intersects[0].point;
@@ -2340,6 +2771,7 @@
             bullet.position.copy(muzzlePosition);
             bullet.velocity = bulletVelocity.multiplyScalar(100);
             bullet.life = 5;
+            bullet.userData.isPlayerBullet = true;
             bullets.push(bullet);
             scene.add(bullet);
         }
@@ -2350,14 +2782,88 @@
                 bullet.life -= deltaTime;
                 const bulletMoveVector = bullet.velocity.clone().multiplyScalar(deltaTime);
                 const bulletRaycaster = new THREE.Raycaster(bullet.position, bullet.velocity.clone().normalize());
-                const intersects = bulletRaycaster.intersectObjects(collidables, true);
+                
                 let collision = false;
-                if (intersects.length > 0 && intersects[0].distance < bulletMoveVector.length()) {
-                    const intersect = intersects[0];
-                    bullet.position.copy(intersect.point);
-                    if (intersect.object.userData.isTargetRing) createBulletHole(intersect);
-                    collision = true;
+
+                if (bullet.userData.isPlayerBullet) {
+                    const shootableObjects = [...collidables, ...turrets.map(t => t.children).flat()];
+                    const intersects = bulletRaycaster.intersectObjects(shootableObjects, true);
+                    if (intersects.length > 0 && intersects[0].distance < bulletMoveVector.length()) {
+                        const intersect = intersects[0];
+                        bullet.position.copy(intersect.point);
+                        
+                        let hitObject = intersect.object;
+                        while(hitObject.parent && !hitObject.userData.isTurret) {
+                            hitObject = hitObject.parent;
+                        }
+
+                        if (hitObject.userData.isTurret) {
+                            hitObject.userData.health--;
+                            
+                            if (!hitObject.userData.isHit) {
+                                hitObject.userData.isHit = true;
+                                hitObject.traverse(child => {
+                                    if(child.isMesh) child.material.emissive.setHex(0xff0000);
+                                });
+
+                                setTimeout(() => {
+                                    if (hitObject && hitObject.parent) {
+                                        let i = 0;
+                                        hitObject.traverse(child => {
+                                            if(child.isMesh && i < hitObject.userData.originalEmissives.length) {
+                                                if (child === hitObject.userData.originalEmissives[i].obj) {
+                                                    child.material.emissive.setHex(hitObject.userData.originalEmissives[i].emissive);
+                                                }
+                                                i++;
+                                            }
+                                        });
+                                        hitObject.userData.isHit = false;
+                                    }
+                                }, 500);
+                            }
+
+                             if (hitObject.userData.health <= 0) {
+                                const turretIndex = turrets.indexOf(hitObject);
+                                if (turretIndex > -1) turrets.splice(turretIndex, 1);
+                                
+                                const collidableIndex = collidables.indexOf(hitObject);
+                                if (collidableIndex > -1) collidables.splice(collidableIndex, 1);
+
+                                scene.remove(hitObject);
+                                create3DFirework(hitObject.position);
+
+                                if (playerHealth < maxPlayerHealth) {
+                                    playerHealth++;
+                                    updateHealthBar();
+                                }
+                                minimapUsesLeft++;
+                                updateMapUsesCounter();
+                            }
+                        } else if (intersect.object.userData.isTargetRing) {
+                            createBulletHole(intersect);
+                        }
+                        collision = true;
+                    }
+                } 
+                else {
+                    const playerBox = new THREE.Box3().setFromCenterAndSize(camera.position, new THREE.Vector3(playerRadius*2, playerHeight, playerRadius*2));
+                    playerBox.min.y = camera.position.y - playerHeight;
+                    playerBox.max.y = camera.position.y;
+                    if (playerBox.containsPoint(bullet.position)) {
+                        playerHealth--;
+                        updateHealthBar();
+                        if (playerHealth <= 0) {
+                            handlePlayerDeath();
+                        }
+                        collision = true;
+                    } else {
+                        const intersects = bulletRaycaster.intersectObjects(collidables, true);
+                        if (intersects.length > 0 && intersects[0].distance < bulletMoveVector.length()) {
+                            collision = true;
+                        }
+                    }
                 }
+
                 if (collision || bullet.life <= 0) {
                     scene.remove(bullet);
                     bullet.geometry.dispose();
@@ -2417,7 +2923,7 @@
         function handleAiming() { raycaster.setFromCamera(centerScreen, camera); const intersects = raycaster.intersectObjects(stage1Targets); if (intersects.length > 0) { const aimedObject = intersects[0].object; if (aimedObject.userData.isTarget && !aimedTargets.has(aimedObject)) { aimedObject.material.emissive.setHex(0x00ff00); aimedTargets.add(aimedObject); updateInstructions(); } } }
         function updatePlayer(deltaTime) { 
             const moveDirection = new THREE.Vector3(); 
-            if (currentStage === 6) { 
+            if (currentStage === 5) {
                 if (keys['KeyA']) moveDirection.x = -1; 
                 if (keys['KeyD']) moveDirection.x = 1;
             } else {
@@ -2427,35 +2933,24 @@
                 if (keys['KeyD']) moveDirection.x = 1;
             }
 
-            if (!hasPlayerMoved && moveDirection.lengthSq() > 0) { hasPlayerMoved = true; if (currentStage >= 17 && currentStage <= 19) { minimapContainer.style.display = 'none'; } } if (!canPlayerMove) return; const wantsToCrouch = (keys['ShiftLeft'] || keys['ShiftRight']); if (wantsToCrouch) { if (!isCrouching && playerOnFloor) { camera.position.y -= (playerHeight - playerCrouchHeight); } isCrouching = true; } else { if (isCrouching) { const upRaycaster = new THREE.Raycaster(camera.position, new THREE.Vector3(0, 1, 0), 0, playerHeight - playerCrouchHeight + 0.1); const ceilingIntersections = upRaycaster.intersectObjects(collidables); if (ceilingIntersections.length === 0) { camera.position.y += (playerHeight - playerCrouchHeight); isCrouching = false; } } } const speed = (isCrouching ? crouchSpeed : moveSpeed); if (moveDirection.lengthSq() > 0) { moveDirection.normalize(); const worldMoveDirection = moveDirection.clone().applyQuaternion(camera.quaternion); camera.position.x += worldMoveDirection.x * speed * deltaTime; camera.position.z += worldMoveDirection.z * speed * deltaTime; } const currentHeight = isCrouching ? playerCrouchHeight : playerHeight; const downRaycaster = new THREE.Raycaster(camera.position, new THREE.Vector3(0, -1, 0), 0, currentHeight + 0.2); const groundIntersections = downRaycaster.intersectObjects([...collidables, ...stageObjects.filter(o => o.geometry && o.geometry.type === 'PlaneGeometry')]); playerOnFloor = groundIntersections.length > 0; if (playerOnFloor) { const groundY = groundIntersections[0].point.y; if (playerVelocity.y <= 0) { playerVelocity.y = 0; camera.position.y = groundY + currentHeight; } } else { playerVelocity.y -= gravity * deltaTime; } if (keys['Space'] && playerOnFloor) { playerVelocity.y = jumpForce; playerOnFloor = false; } camera.position.y += playerVelocity.y * deltaTime; const playerBox = new THREE.Box3().setFromCenterAndSize(camera.position, new THREE.Vector3(playerRadius*2, currentHeight, playerRadius*2)); playerBox.min.y = camera.position.y - currentHeight; playerBox.max.y = camera.position.y; collidables.forEach(collidable => { const collidableBox = new THREE.Box3().setFromObject(collidable); if (playerBox.intersectsBox(collidableBox)) { const center = new THREE.Vector3(); playerBox.getCenter(center); const collidableCenter = new THREE.Vector3(); collidableBox.getCenter(collidableCenter); const overlap = new THREE.Vector3().subVectors(center, collidableCenter); const halfSizePlayer = new THREE.Vector3(); playerBox.getSize(halfSizePlayer).multiplyScalar(0.5); const halfSizeCollidable = new THREE.Vector3(); collidableBox.getSize(halfSizeCollidable).multiplyScalar(0.5); const penetration = new THREE.Vector3((halfSizePlayer.x + halfSizeCollidable.x) - Math.abs(overlap.x), (halfSizePlayer.y + halfSizeCollidable.y) - Math.abs(overlap.y), (halfSizePlayer.z + halfSizeCollidable.z) - Math.abs(overlap.z)); if (penetration.x < penetration.z && penetration.x < penetration.y) { camera.position.x += penetration.x * Math.sign(overlap.x); } else if (penetration.z < penetration.y) { camera.position.z += penetration.z * Math.sign(overlap.z); } else { if (playerVelocity.y > 0 && overlap.y < 0) { playerVelocity.y = 0; } camera.position.y += penetration.y * Math.sign(overlap.y); } } }); }
+            if (!hasPlayerMoved && moveDirection.lengthSq() > 0) { hasPlayerMoved = true; if (currentStage >= 16 && currentStage <= 26) { minimapContainer.style.display = 'none'; } } if (!canPlayerMove) return; const wantsToCrouch = (keys['ShiftLeft'] || keys['ShiftRight']); if (wantsToCrouch) { if (!isCrouching && playerOnFloor) { camera.position.y -= (playerHeight - playerCrouchHeight); } isCrouching = true; } else { if (isCrouching) { const upRaycaster = new THREE.Raycaster(camera.position, new THREE.Vector3(0, 1, 0), 0, playerHeight - playerCrouchHeight + 0.1); const ceilingIntersections = upRaycaster.intersectObjects(collidables); if (ceilingIntersections.length === 0) { camera.position.y += (playerHeight - playerCrouchHeight); isCrouching = false; } } } const speed = (isCrouching ? crouchSpeed : moveSpeed); if (moveDirection.lengthSq() > 0) { moveDirection.normalize(); const worldMoveDirection = moveDirection.clone().applyQuaternion(camera.quaternion); camera.position.x += worldMoveDirection.x * speed * deltaTime; camera.position.z += worldMoveDirection.z * speed * deltaTime; } const currentHeight = isCrouching ? playerCrouchHeight : playerHeight; const downRaycaster = new THREE.Raycaster(camera.position, new THREE.Vector3(0, -1, 0), 0, currentHeight + 0.2); const groundIntersections = downRaycaster.intersectObjects([...collidables, ...stageObjects.filter(o => o.geometry && o.geometry.type === 'PlaneGeometry')]); playerOnFloor = groundIntersections.length > 0; if (playerOnFloor) { const groundY = groundIntersections[0].point.y; if (playerVelocity.y <= 0) { playerVelocity.y = 0; camera.position.y = groundY + currentHeight; } } else { playerVelocity.y -= gravity * deltaTime; } if (keys['Space'] && playerOnFloor) { playerVelocity.y = jumpForce; playerOnFloor = false; } camera.position.y += playerVelocity.y * deltaTime; const playerBox = new THREE.Box3().setFromCenterAndSize(camera.position, new THREE.Vector3(playerRadius*2, currentHeight, playerRadius*2)); playerBox.min.y = camera.position.y - currentHeight; playerBox.max.y = camera.position.y; collidables.forEach(collidable => { const collidableBox = new THREE.Box3().setFromObject(collidable); if (playerBox.intersectsBox(collidableBox)) { const center = new THREE.Vector3(); playerBox.getCenter(center); const collidableCenter = new THREE.Vector3(); collidableBox.getCenter(collidableCenter); const overlap = new THREE.Vector3().subVectors(center, collidableCenter); const halfSizePlayer = new THREE.Vector3(); playerBox.getSize(halfSizePlayer).multiplyScalar(0.5); const halfSizeCollidable = new THREE.Vector3(); collidableBox.getSize(halfSizeCollidable).multiplyScalar(0.5); const penetration = new THREE.Vector3((halfSizePlayer.x + halfSizeCollidable.x) - Math.abs(overlap.x), (halfSizePlayer.y + halfSizeCollidable.y) - Math.abs(overlap.y), (halfSizePlayer.z + halfSizeCollidable.z) - Math.abs(overlap.z)); if (penetration.x < penetration.z && penetration.x < penetration.y) { camera.position.x += penetration.x * Math.sign(overlap.x); } else if (penetration.z < penetration.y) { camera.position.z += penetration.z * Math.sign(overlap.z); } else { if (playerVelocity.y > 0 && overlap.y < 0) { playerVelocity.y = 0; } camera.position.y += penetration.y * Math.sign(overlap.y); } } }); }
         function updateNPC(npc, deltaTime) { const fleeVector = new THREE.Vector3().subVectors(npc.position, camera.position); fleeVector.y = 0; fleeVector.normalize(); const avoidanceVector = new THREE.Vector3(); const feelerLength = 2.0; let npcDirection = npc.velocity.clone().normalize(); if(npcDirection.lengthSq() === 0) { npc.getWorldDirection(npcDirection); npcDirection.y = 0; npcDirection.normalize(); } const wallRaycaster = new THREE.Raycaster(npc.position, npcDirection); const intersections = wallRaycaster.intersectObjects(collidables); if (intersections.length > 0 && intersections[0].distance < feelerLength) { const wallNormal = intersections[0].face.normal.clone(); avoidanceVector.copy(npcDirection).reflect(wallNormal).multiplyScalar(1.5); } let steeringDirection = fleeVector.add(avoidanceVector); if (steeringDirection.lengthSq() === 0) { steeringDirection.set(Math.random() - 0.5, 0, Math.random() - 0.5); } steeringDirection.normalize(); if (Math.random() > 0.98) { const randomAngle = (Math.random() - 0.5) * Math.PI; steeringDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), randomAngle); } npc.velocity.lerp(steeringDirection, 0.05); const moveStep = npc.velocity.clone().normalize().multiplyScalar(moveSpeed * 0.8 * deltaTime); const nextPos = npc.position.clone().add(moveStep); const moveDistance = moveStep.length(); const collisionRaycaster = new THREE.Raycaster(npc.position, moveStep.clone().normalize()); const collisionIntersections = collisionRaycaster.intersectObjects(collidables); if (collisionIntersections.length === 0 || collisionIntersections[0].distance > moveDistance + 1.5) { npc.position.copy(nextPos); } else { const wallNormal = collisionIntersections[0].face.normal.clone(); npc.velocity.reflect(wallNormal); } npc.position.y = 0.9; }
-        function updateKeyDisplay() { keyW.classList.toggle('key-active', !!keys['KeyW']); keyA.classList.toggle('key-active', !!keys['KeyA']); keyS.classList.toggle('key-active', !!keys['KeyS']); keyD.classList.toggle('key-active', !!keys['KeyD']); keySpace.classList.toggle('key-active', !!keys['Space']); keyShift.classList.toggle('key-active', !!(keys['ShiftLeft'] || keys['ShiftRight'])); }
+        
+        function updateKeyDisplay() {
+            if (keyW) keyW.classList.toggle('key-active', !!keys['KeyW']);
+            if (keyA) keyA.classList.toggle('key-active', !!keys['KeyA']);
+            if (keyS) keyS.classList.toggle('key-active', !!keys['KeyS']);
+            if (keyD) keyD.classList.toggle('key-active', !!keys['KeyD']);
+            if (keySpace) keySpace.classList.toggle('key-active', !!keys['Space']);
+            if (keyShift) keyShift.classList.toggle('key-active', !!(keys['ShiftLeft'] || keys['ShiftRight']));
+        }
+
         function updateNpcCounter() { const total = scene.userData.totalNpcs || 0; const remaining = npcs.length; npcCounterElement.innerHTML = `已捕捉 / Caught: ${total - remaining} / ${total}`; }
         function updateLandmarkCounter() { landmarkCounterElement.innerHTML = `已找到 / Found: ${nextLandmarkIndex} / ${landmarks.length}`; }
         function updateGenericCounter(text) { genericCounterElement.innerHTML = text; }
         
         function updateMapUsesCounter() {
             mapUsesCounterElement.innerHTML = `地图剩余次数: ${minimapUsesLeft}<br><span style="font-size:14px; color: #ccc;">Map Uses Left: ${minimapUsesLeft}</span>`;
-        }
-
-        function handleWarmupNarration() {
-            if (narrationBox.style.display === 'block') return;
-            raycaster.setFromCamera(centerScreen, camera);
-            const intersects = raycaster.intersectObjects(collidables, true);
-            if (intersects.length > 0) {
-                let parent = intersects[0].object;
-                while(parent.parent && parent.parent.type !== 'Scene') parent = parent.parent;
-                if (parent.name === 'wasd_device' && !narrationFlags.wasd) {
-                    narrationFlags.wasd = true;
-                    showNarration('触碰中心的红色按钮以激活装置，然后在W/A/S/D上移动进行练习。<br>Touch the central red button to activate, then move on W/A/S/D to practice.');
-                } else if (parent.name === 'skill_device' && !narrationFlags.skill) {
-                    narrationFlags.skill = true;
-                    showNarration('使用空格键(Space)跳过障碍，使用(Shift)蹲下穿过矮门。<br>Use Space to jump over obstacles, and Shift to crouch under gates.');
-                } else if (parent.name === 'warmup_target' && !narrationFlags.target) {
-                    narrationFlags.target = true;
-                    showNarration('这是一个移动靶，试试用鼠标左键射击它！<br>This is a moving target. Try shooting it with the left mouse button!');
-                }
-            }
         }
 
         function showNarration(text) {
@@ -2561,11 +3056,12 @@
                         if (cell === 1) minimapCtx.fillStyle = '#666';
                         else if (cell === 'J') minimapCtx.fillStyle = '#ff8c00';
                         else if (cell === 'C') minimapCtx.fillStyle = '#708090';
+                        else if (cell === 'T') minimapCtx.fillStyle = '#ff4500';
                         else minimapCtx.fillStyle = '#333';
                         minimapCtx.fillRect(x, y, w, h);
                     }
                 }
-            } else if (currentStage === 7 && scene.userData.walls) {
+            } else if (currentStage === 6 && scene.userData.walls) {
                  minimapCtx.fillStyle = '#666';
                  scene.userData.walls.forEach(wall => {
                     const wallCenterMap = worldToMap(new THREE.Vector3(wall.x, 0, wall.z));
@@ -2574,7 +3070,7 @@
                     minimapCtx.fillRect(wallCenterMap.x - w/2, wallCenterMap.y - h/2, (w < 2 && w > 0) ? 2.5 : w, (h < 2 && h > 0) ? 2.5 : h);
                  });
             }
-            if (currentStage === 7) {
+            if (currentStage === 6) {
                 const route = scene.userData.routePath;
                 if(route && route.length > 0) {
                     minimapCtx.strokeStyle = '#ffdd57';
@@ -2604,7 +3100,7 @@
                     minimapCtx.arc(endMapPos.x, endMapPos.y, 5, 0, 2 * Math.PI);
                     minimapCtx.fill();
                 }
-            } else if (currentStage >= 10 && currentStage <= 13) { 
+            } else if (currentStage >= 9 && currentStage <= 12) {
                 const endMapPos = worldToMap(scene.userData.endPos); 
                 minimapCtx.fillStyle = '#ff0000'; 
                 minimapCtx.beginPath(); 
@@ -2615,7 +3111,7 @@
                 } 
                 minimapCtx.closePath(); 
                 minimapCtx.fill(); 
-            } else if (currentStage >= 14 && currentStage <= 16) { 
+            } else if (currentStage >= 13 && currentStage <= 15) {
                 minimapCtx.fillStyle = '#0099ff'; 
                 npcs.forEach(npc => { 
                     const npcMapPos = worldToMap(npc.position); 
@@ -2623,7 +3119,7 @@
                     minimapCtx.arc(npcMapPos.x, npcMapPos.y, 2.5, 0, 2 * Math.PI); 
                     minimapCtx.fill(); 
                 }); 
-            } else if (currentStage >= 17 && currentStage <= 19) {
+            } else if (currentStage >= 16 && currentStage <= 26) {
                 landmarks.forEach((landmark) => {
                     const landmarkMapPos = worldToMap(landmark.position);
                     minimapCtx.fillStyle = landmark.userData.isFound ? '#00ff00' : '#ffff00';
@@ -2651,6 +3147,154 @@
             minimapCtx.closePath();
             minimapCtx.fill();
             minimapCtx.restore();
+        }
+
+        function createTurret(x, z) {
+            const turretGroup = new THREE.Group();
+            
+            const baseMat = new THREE.MeshStandardMaterial({ color: 0x6c757d, roughness: 0.7, metalness: 0.2 });
+            const baseGeo = new THREE.CylinderGeometry(1.2, 1.5, 0.5, 8);
+            const base = new THREE.Mesh(baseGeo, baseMat);
+            base.castShadow = true;
+            turretGroup.add(base);
+
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x495057, roughness: 0.6, metalness: 0.3 });
+            const bodyGeo = new THREE.CylinderGeometry(0.8, 1, 1.5, 8);
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 1;
+            body.castShadow = true;
+            turretGroup.add(body);
+
+            const headGroup = new THREE.Group();
+            const headMat = new THREE.MeshStandardMaterial({ color: 0x343a40, roughness: 0.5, metalness: 0.5 });
+            const headGeo = new THREE.SphereGeometry(0.7, 16, 8);
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.castShadow = true;
+            headGroup.add(head);
+
+            const eyeMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xdd0000, emissiveIntensity: 1 });
+            const eyeGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.8, 16);
+            const eye = new THREE.Mesh(eyeGeo, eyeMat);
+            eye.rotation.z = Math.PI / 2;
+            eye.position.x = 0.6;
+            headGroup.add(eye);
+            
+            headGroup.position.y = 1.8;
+            turretGroup.add(headGroup);
+
+            turretGroup.position.set(x, 0.25, z);
+            
+            const originalEmissives = [];
+            turretGroup.traverse(child => {
+                if (child.isMesh) {
+                    originalEmissives.push({obj: child, emissive: child.material.emissive.getHex()});
+                }
+            });
+
+            turretGroup.userData = {
+                isTurret: true,
+                health: 5,
+                shootCooldown: 0,
+                head: headGroup,
+                eye: eye,
+                isHit: false,
+                originalEmissives: originalEmissives
+            };
+
+            turretGroup.castShadow = true;
+            scene.add(turretGroup);
+            stageObjects.push(turretGroup);
+            turrets.push(turretGroup);
+            collidables.push(turretGroup);
+        }
+
+        function updateTurrets(deltaTime) {
+            turrets.forEach(turret => {
+                const head = turret.userData.head;
+                const distanceToPlayer = turret.position.distanceTo(camera.position);
+
+                if (distanceToPlayer < 30) {
+                    const turretDirection = new THREE.Vector3();
+                    head.getWorldDirection(turretDirection);
+                    const playerDirection = new THREE.Vector3().subVectors(camera.position, head.getWorldPosition(new THREE.Vector3()));
+                    playerDirection.y -= 0.2;
+                    playerDirection.normalize();
+
+                    const angle = turretDirection.angleTo(playerDirection);
+                    if(angle > 0.05) {
+                        const cross = new THREE.Vector3().crossVectors(turretDirection, playerDirection);
+                        head.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(cross.normalize(), Math.min(angle, deltaTime * 2)));
+                    }
+                    
+                    const ray = new THREE.Raycaster(head.getWorldPosition(new THREE.Vector3()), playerDirection);
+                    const intersects = ray.intersectObjects(collidables, true);
+                    
+                    let playerVisible = true;
+                    if (intersects.length > 0 && intersects[0].distance < distanceToPlayer - 1) {
+                        let hitObject = intersects[0].object;
+                        let isSelfHit = false;
+                        while(hitObject.parent) {
+                            if (hitObject === turret) {
+                                isSelfHit = true;
+                                break;
+                            }
+                            hitObject = hitObject.parent;
+                        }
+                        if (!isSelfHit) {
+                            playerVisible = false;
+                        }
+                    }
+
+                    if (playerVisible && !turret.userData.isHit) {
+                        turret.userData.eye.material.emissive.setHex(0xff0000);
+                        if (turret.userData.shootCooldown <= 0) {
+                            turret.userData.shootCooldown = 0.6;
+                            fireTurretBullet(turret);
+                        }
+                    } else if (!playerVisible && !turret.userData.isHit) {
+                         turret.userData.eye.material.emissive.setHex(0x550000);
+                    }
+                }
+                if (turret.userData.shootCooldown > 0) {
+                    turret.userData.shootCooldown -= deltaTime;
+                }
+            });
+        }
+        
+        function fireTurretBullet(turret) {
+            const bulletGeo = new THREE.SphereGeometry(0.1, 8, 8);
+            const bulletMat = new THREE.MeshStandardMaterial({ color: 0xff4500, emissive: 0xff4500, emissiveIntensity: 2 });
+            const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+
+            const muzzlePosition = new THREE.Vector3();
+            turret.userData.eye.getWorldPosition(muzzlePosition);
+            
+            const bulletVelocity = new THREE.Vector3().subVectors(camera.position, muzzlePosition).normalize();
+            
+            bullet.position.copy(muzzlePosition);
+            bullet.velocity = bulletVelocity.multiplyScalar(30);
+            bullet.life = 5;
+            bullet.userData.isPlayerBullet = false;
+            bullets.push(bullet);
+            scene.add(bullet);
+        }
+
+        function updateHealthBar() {
+            const percentage = (playerHealth / maxPlayerHealth) * 100;
+            healthBar.style.width = `${percentage}%`;
+            healthText.textContent = `HP: ${playerHealth} / ${maxPlayerHealth}`;
+        }
+        
+        function handlePlayerDeath() {
+            if (isPlayerDead) return;
+            isPlayerDead = true;
+            canPlayerMove = false;
+            stopTimer();
+            if (document.pointerLockElement) document.exitPointerLock();
+            
+            updateInstructions();
+            blockerElement.addEventListener('click', () => loadStage(currentStage), { once: true });
+            blockerElement.style.display = 'flex';
         }
 
     </script>
