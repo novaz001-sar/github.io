@@ -773,7 +773,9 @@
         let aimedTargets = new Set();
         let stageCompletionFlag = false; 
         let isTransitioning = false;
-        let highlightedRing = null;
+        let resumeRequested = false;
+		let resumeArm = false;
+		let highlightedRing = null;
         
         let shuttleRunState = {};
         let shuttleRunMaterials = {};
@@ -1134,6 +1136,22 @@
         }
 
         function onPointerlockChange() {
+			// Guard against menu flash when resuming via ESC (with grace window)
+			try {
+			  const el = document.body;
+			  const locked = (document.pointerLockElement === el);
+			  if (!locked && typeof resumeRequested !== 'undefined' && resumeRequested) {
+				// Still waiting for lock; don't reopen the menu
+				return;
+			  }
+			  if (locked && typeof resumeRequested !== 'undefined' && resumeRequested) {
+				// Lock acquired for resume; keep resumeRequested true briefly to ignore any immediate unlock
+				setTimeout(function(){
+				  resumeRequested = false;
+				  isTransitioning = false;
+				}, 120); // grace window
+			  }
+			} catch (_e) { /* ignore */ }
             if (document.pointerLockElement === document.body) {
                 isTransitioning = false; 
                 menuOverlay.style.display = 'none';
@@ -1535,8 +1553,20 @@
         function onKeyDown(event) {
             keys[event.code] = true;
             if (event.code === 'Escape') { 
-                if (document.pointerLockElement === document.body) document.exitPointerLock();
-            }
+			  event.preventDefault();
+			  event.stopPropagation();
+			  if (menuOverlay && menuOverlay.style.display === 'flex') {
+				// Arm resume; actual pointer lock will be requested on ESC keyup
+				resumeArm = true;
+			  } else {
+				// In-game -> pause via exiting pointer lock; UI handled by onPointerlockChange
+				if (document.pointerLockElement === document.body) {
+				  isTransitioning = true;
+				  document.exitPointerLock();
+				}
+			  }
+			  return;
+			}
             if (event.code === 'KeyE' && (currentStage >= 16 && currentStage <= 26)) {
                 if (minimapUsesLeft > 0) {
                     if (minimapContainer.style.display === 'none') { 
@@ -1554,6 +1584,39 @@
         }
 
         function onKeyUp(event) {
+			// Handle ESC resume on keyup to avoid immediate pointer lock exit due to key being held
+			if (event.code === 'Escape' && resumeArm) {
+			  resumeArm = false;
+			  if (menuOverlay && menuOverlay.style.display === 'flex') {
+				resumeRequested = true;
+				isTransitioning = true;
+				try {
+				  const el = document.body;
+				  if (el && el.requestPointerLock) {
+					if (el.focus) el.focus();
+					// Delay request slightly to ensure key is fully released in the browser
+					setTimeout(function(){
+					  el.requestPointerLock();
+					  // Fallback: if not locked soon, cancel request
+					  setTimeout(function(){
+						if (resumeRequested && document.pointerLockElement !== el) {
+						  resumeRequested = false;
+						  isTransitioning = false;
+						}
+					  }, 600);
+					}, 40);
+				  } else {
+					resumeRequested = false;
+					isTransitioning = false;
+				  }
+				} catch (e) {
+				  resumeRequested = false;
+				  isTransitioning = false;
+				}
+				return;
+			  }
+			}
+
             keys[event.code] = false;
             if (event.code === 'KeyE' && (currentStage >= 16 && currentStage <= 26)) {
                 canPlayerMove = true;
