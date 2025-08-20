@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh">
 <head>
@@ -2911,7 +2912,32 @@ smallCovers.forEach(p => makeWall(p.x, 0.8, p.z, 1.2, 3.0, 0.6, 0x999999));
     
     // Patterned turrets: linear ("left-right") or circular ("around")
     const radius = boundary - 2;
-    const patterns = (config && Array.isArray(config.patterns)) ? config.patterns.slice(0,3) : ['circular'];
+    
+    // --- Extra covers for survival stages 28–32 ---
+    try {
+        if (typeof currentStage !== 'undefined' && currentStage >= 28 && currentStage <= 32) {
+            // Small scattered covers (narrow, local blocking)
+            (function addSmallCovers(){
+                const H = 1.6, Y = H/2, W = 1.2, D = 0.6;
+                const positions = [
+                    {x:-6, z:-2}, {x:-2, z:-2}, {x: 2, z:-2}, {x: 6, z:-2},
+                    {x:-5, z: 2}, {x: 0, z: 2}, {x: 5, z: 2},
+                    {x:-3, z: 0}, {x: 3, z: 0}, {x: 0, z:-4}, {x: 0, z: 4}
+                ];
+                positions.forEach(p => { if (typeof makeWall === 'function') makeWall(p.x, Y, p.z, W, H, D, 0x999999); });
+            })();
+            // Long strip covers for stages 31 and 32
+            if (currentStage >= 31) {
+                const H2 = 1.6, Y2 = H2/2, C2 = 0x888888;
+                // Oriented along X (wide in X, thin in Z)
+                if (typeof makeWall === 'function') {
+                    makeWall(0, Y2, -3.5, 10, H2, 0.6, C2);
+                    makeWall(0, Y2,  3.5, 10, H2, 0.6, C2);
+                }
+            }
+        }
+    } catch (e) { /* no-op */ }
+const patterns = (config && Array.isArray(config.patterns)) ? config.patterns.slice(0,3) : ['circular'];
     const createdTurrets = [];
     patterns.forEach((pat, i) => {
         let turret = null;
@@ -2983,6 +3009,7 @@ if (Array.isArray(animatedObjects)) {
 
     // Survival target time & timer
     scene.userData.survivalTargetTime = config.targetTime;
+    scene.userData.survivalFireDelay = 5;
     // Start the timer for survival stages explicitly
     levelStartTime = clock.getElapsedTime();
     isTimerRunning = true;
@@ -3538,6 +3565,23 @@ function setupStage28_Survival1() { setupSurvivalArena({ size: 36, targetTime: 3
             collidables.push(turretGroup);
         }
 
+
+function getTurretBaseCooldown() {
+    // Original fastest fire interval
+    const base = 0.6;
+    if (typeof isSurvivalStage === 'function' && isSurvivalStage(currentStage)) {
+        switch (currentStage) {
+            case 28: return base * 4.0;       // 1/4 original speed (slowest)
+            case 29: return base * 3.0;       // 1/3 original speed
+            case 30: return base * 2.0;       // 1/2 original speed
+            case 31: return base * (4.0/3.0); // 3/4 original speed
+            case 32: return base;             // original fastest
+        }
+    }
+    return base;
+}
+
+
         function updateTurrets(deltaTime) {
             turrets.forEach(turret => {
                 const head = turret.userData.head;
@@ -3578,9 +3622,15 @@ function setupStage28_Survival1() { setupSurvivalArena({ size: 36, targetTime: 3
                     if (playerVisible && !turret.userData.isHit) {
                         turret.userData.eye.material.emissive.setHex(0xff0000);
                         if (turret.userData.shootCooldown <= 0) {
-                            turret.userData.shootCooldown = 0.6;
-                            fireTurretBullet(turret);
-                        }
+                            // Survival 5s fire delay + per-stage fire rate scaling
+let __canFire = true;
+if (typeof isSurvivalStage === 'function' && isSurvivalStage(currentStage)) {
+  const __delay = (scene && scene.userData && typeof scene.userData.survivalFireDelay === 'number') ? scene.userData.survivalFireDelay : 5;
+  const __elapsed = clock.getElapsedTime() - levelStartTime;
+  __canFire = (__elapsed >= __delay);
+}
+if (__canFire) { turret.userData.shootCooldown = getTurretBaseCooldown(); fireTurretBullet(turret); }
+}
                     } else if (!playerVisible && !turret.userData.isHit) {
                          turret.userData.eye.material.emissive.setHex(0x550000);
                     }
