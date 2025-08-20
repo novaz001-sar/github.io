@@ -715,7 +715,7 @@
 
         // --- Player Combat Variables ---
         let playerHealth = 3;
-        const maxPlayerHealth = 3;
+        let maxPlayerHealth = 3;
         let isPlayerDead = false;
 
         // --- Reward System Variables ---
@@ -990,7 +990,7 @@
                 if (isPlayerDead) return;
                 if (stageCompletionFlag) {
                     if (gameMode === 'campaign' && currentStage < TOTAL_LEVELS) {
-                         hideMenuAndLoad(currentStage + 1);
+                         const _next = (currentStage + 1 === 6 ? 7 : currentStage + 1); hideMenuAndLoad(_next);
                     } else {
                         stageCompletionFlag = false;
                         blockerElement.style.display = 'none';
@@ -1074,59 +1074,77 @@
             });
         }
 
-        function updateLevelSelectMenu() {
-            // --- UPDATED: New Level Names based on Cognitive Training ---
-            const stageNames = [
-                { zh: "注意力：定点聚焦", en: "Attention: Point Focus" },
-                { zh: "反应速度：瞬时响应", en: "Reaction: Quick Response" },
-                { zh: "处理速度：动态追踪", en: "Processing: Dynamic Tracking" },
-                { zh: "预判能力：轨迹预测", en: "Prediction: Trajectory Forecast" },
-                { zh: "手眼协调：同步处理", en: "Coordination: Synchronized Tasks" },
-                { zh: "空间规划：蓝图导航", en: "Spatial Planning: Blueprint Navigation" },
-                { zh: "动作规划：节奏跨越", en: "Motor Skills: Rhythmic Leap" },
-                { zh: "认知灵活性：任务切换", en: "Cognitive Flexibility: Task Switching" },
-                { zh: "工作记忆：迷宫速通 I", en: "Working Memory: Maze Sprint I" },
-                { zh: "工作记忆：迷宫速通 II", en: "Working Memory: Maze Sprint II" },
-                { zh: "工作记忆：迷宫速通 III", en: "Working Memory: Maze Sprint III" },
-                { zh: "工作记忆：迷宫速通 IV", en: "Working Memory: Maze Sprint IV" },
-                { zh: "策略思维：动态博弈 I", en: "Strategic Thinking: Dynamic Chase I" },
-                { zh: "策略思维：动态博弈 II", en: "Strategic Thinking: Dynamic Chase II" },
-                { zh: "策略思维：动态博弈 III", en: "Strategic Thinking: Dynamic Chase III" },
-                { zh: "顺序记忆：地标寻踪 I", en: "Sequential Memory: Landmark Trace I" },
-                { zh: "顺序记忆：地标寻踪 II", en: "Sequential Memory: Landmark Trace II" },
-                { zh: "顺序记忆：地标寻踪 III", en: "Sequential Memory: Landmark Trace III" },
-                { zh: "顺序记忆：地标寻踪 IV", en: "Sequential Memory: Landmark Trace IV" },
-                { zh: "顺序记忆：地标寻踪 V", en: "Sequential Memory: Landmark Trace V" },
-                { zh: "顺序记忆：地标寻踪 VI", en: "Sequential Memory: Landmark Trace VI" },
-                { zh: "风险决策：火线突围 I", en: "Risk & Decision: Hazard Breakout I" },
-                { zh: "风险决策：火线突围 II", en: "Risk & Decision: Hazard Breakout II" },
-                { zh: "风险决策：火线突围 III", en: "Risk & Decision: Hazard Breakout III" },
-                { zh: "风险决策：火线突围 IV", en: "Risk & Decision: Hazard Breakout IV" },
-                { zh: "风险决策：火线突围 V", en: "Risk & Decision: Hazard Breakout V" },
-                { zh: "综合能力认证", en: "Cognitive Mastery" }
-            ];
-            levelSelectMenu.innerHTML = ''; 
-            stageNames.forEach((name, i) => {
-                const stageIndex = i + 1;
-                const button = document.createElement('button');
-                button.className = 'menu-button';
-                const isLocked = gameMode === 'campaign' && stageIndex > unlockedLevel;
-                let buttonHTML = `${name.zh}<br><span style="font-size:12px;">${name.en}</span>`;
-                if (isLocked) {
-                    buttonHTML += ' <br><span style="font-size:12px; color: #888;">(锁定 / Locked)</span>';
-                    button.classList.add('disabled');
-                } else {
-                    const bestTime = levelTimes[stageIndex];
-                    if (bestTime) { buttonHTML += `<div class="level-time">最快 / Best: ${bestTime.toFixed(2)}s</div>`; }
-                    if (gameMode === 'campaign' && levelStars[stageIndex]) {
-                         buttonHTML += `<div class="level-stars">${displayStars(levelStars[stageIndex])}</div>`;
-                    }
-                    button.addEventListener('click', (event) => { event.stopPropagation(); hideMenuAndLoad(stageIndex); });
-                }
-                button.innerHTML = buttonHTML;
-                levelSelectMenu.appendChild(button);
+        
+function updateLevelSelectMenu() {
+    const baseNames = [
+        { zh: "注意力：定点聚焦", en: "Attention: Point Focus" },
+        { zh: "反应速度：瞬时响应", en: "Reaction: Quick Response" },
+        { zh: "处理速度：动态追踪", en: "Processing: Dynamic Tracking" },
+        { zh: "预判能力：轨迹预测", en: "Prediction: Trajectory Forecast" },
+        { zh: "手眼协调：同步处理", en: "Coordination: Synchronized Tasks" },
+        { zh: "动作规划：节奏跨越", en: "Motor Skills: Rhythmic Leap" },
+        { zh: "认知灵活性：任务切换", en: "Cognitive Flexibility: Task Switching" },
+        { zh: "工作记忆：迷宫速通 I", en: "Working Memory: Maze Sprint I" },
+        { zh: "工作记忆：迷宫速通 II", en: "Working Memory: Maze Sprint II" },
+        { zh: "工作记忆：迷宫速通 III", en: "Working Memory: Maze Sprint III" },
+        { zh: "工作记忆：迷宫速通 IV", en: "Working Memory: Maze Sprint IV" },
+        { zh: "策略思维：动态博弈 I", en: "Strategic Thinking: Dynamic Chase I" },
+        { zh: "策略思维：动态博弈 II", en: "Strategic Thinking: Dynamic Chase II" },
+        { zh: "策略思维：动态博弈 III", en: "Strategic Thinking: Dynamic Chase III" },
+        { zh: "顺序记忆：地标寻踪 I", en: "Sequential Memory: Landmark Trace I" },
+        { zh: "顺序记忆：地标寻踪 II", en: "Sequential Memory: Landmark Trace II" },
+        { zh: "顺序记忆：地标寻踪 III", en: "Sequential Memory: Landmark Trace III" },
+        { zh: "顺序记忆：地标寻踪 IV", en: "Sequential Memory: Landmark Trace IV" },
+        { zh: "顺序记忆：地标寻踪 V", en: "Sequential Memory: Landmark Trace V" },
+        { zh: "顺序记忆：地标寻踪 VI", en: "Sequential Memory: Landmark Trace VI" },
+        { zh: "风险决策：火线突围 I", en: "Risk & Decision: Hazard Breakout I" },
+        { zh: "风险决策：火线突围 II", en: "Risk & Decision: Hazard Breakout II" },
+        { zh: "风险决策：火线突围 III", en: "Risk & Decision: Hazard Breakout III" },
+        { zh: "风险决策：火线突围 IV", en: "Risk & Decision: Hazard Breakout IV" },
+        { zh: "风险决策：火线突围 V", en: "Risk & Decision: Hazard Breakout V" },
+        { zh: "综合能力认证", en: "Cognitive Mastery" }
+    ];
+    const mapping = [];
+    for (let i = 0; i < baseNames.length; i++) {
+        const name = baseNames[i];
+        const stageIndex = i + 1;
+        const stageId = (stageIndex >= 6 ? stageIndex + 1 : stageIndex);
+        mapping.push({ stageId, zh: name.zh, en: name.en });
+    }
+    const insertAt = 4;
+    const survival = [
+        { stageId: 28, zh: "生存试炼：炮塔竞技 I", en: "Survival: Turret Arena I" },
+        { stageId: 29, zh: "生存试炼：炮塔竞技 II", en: "Survival: Turret Arena II" },
+        { stageId: 30, zh: "生存试炼：炮塔竞技 III", en: "Survival: Turret Arena III" },
+        { stageId: 31, zh: "生存试炼：炮塔竞技 IV", en: "Survival: Turret Arena IV" },
+        { stageId: 32, zh: "生存试炼：炮塔竞技 V", en: "Survival: Turret Arena V" }
+    ];
+    const ordered = mapping.slice(0, insertAt).concat(survival, mapping.slice(insertAt));
+
+    levelSelectMenu.innerHTML = '';
+    ordered.forEach(({stageId, zh, en}) => {
+        const button = document.createElement('button');
+        button.className = 'menu-button';
+        const isLocked = (gameMode === 'campaign' && stageId > unlockedLevel);
+        let buttonHTML = `${zh}<br><span style="font-size:12px;">${en}</span>`;
+        if (isLocked) {
+            buttonHTML += ' <br><span style="font-size:12px; color: #888;">(锁定 / Locked)</span>';
+            button.classList.add('disabled');
+        } else {
+            const bestTime = levelTimes[stageId];
+            if (bestTime) { buttonHTML += `<div class="level-time">最快 / Best: ${bestTime.toFixed(2)}s</div>`; }
+            if (gameMode === 'campaign' && levelStars[stageId]) {
+                buttonHTML += `<div class="level-stars">${displayStars(levelStars[stageId])}</div>`;
+            }
+            button.addEventListener('click', (event) => {
+                event.stopPropagation();
+                hideMenuAndLoad(stageId);
             });
         }
+        button.innerHTML = buttonHTML;
+        levelSelectMenu.appendChild(button);
+    });
+}
 
         function hideMenuAndLoad(stage) {
             menuOverlay.style.display = 'none';
@@ -1215,7 +1233,7 @@
             if (warmupTimerDisplayElement) warmupTimerDisplayElement.style.display = 'none';
             if (warmupConfirmOverlay) warmupConfirmOverlay.style.display = 'none';
 
-            scene.background.set(0x87ceeb);
+            scene.background = new THREE.Color(0x87ceeb);
             scene.fog = new THREE.Fog(0x87ceeb, 0, 150);
 
             currentStage = stageIndex;
@@ -1227,10 +1245,16 @@
             playerHealth = maxPlayerHealth;
             updateHealthBar();
             const isTurretLevel = (currentStage >= 22 && currentStage <= 26);
-            healthContainer.style.display = isTurretLevel ? 'block' : 'none';
-            if (toyGun) toyGun.visible = (stageIndex === 0 || isTurretLevel);
+            const isSurvival = isSurvivalStage(currentStage);
+            // Per-stage HP: Survival uses 5 HP, others default to 3
+            maxPlayerHealth = isSurvival ? 5 : 3;
+            playerHealth = maxPlayerHealth;
+            updateHealthBar();
+            healthContainer.style.display = (isTurretLevel || isSurvival) ? 'block' : 'none';
+            // Hide gun in survival stages
+if (toyGun) toyGun.visible = (stageIndex === 0 || isTurretLevel) && !isSurvival;
             
-            crosshairElement.className = isTurretLevel ? 'crosshair-turret' : 'crosshair-default';
+            crosshairElement.className = (isTurretLevel || isSurvival) ? 'crosshair-turret' : 'crosshair-default';
 
             const childrenToRemove = scene.children.filter(child => child !== camera);
             childrenToRemove.forEach(child => {
@@ -1307,8 +1331,13 @@
                 case 24: setupStage24_TurretMaze3(); break;
                 case 25: setupStage25_TurretMaze4(); break;
                 case 26: setupStage26_TurretMaze5(); break;
-                case 27: setupStage_Final(); break; 
-            }
+                case 27: setupStage_Final(); break;
+                case 28: setupStage28_Survival1(); break;
+                case 29: setupStage29_Survival2(); break;
+                case 30: setupStage30_Survival3(); break;
+                case 31: setupStage31_Survival4(); break;
+                case 32: setupStage32_Survival5(); break;
+                }
 
             if (currentStage !== TOTAL_LEVELS) {
                 updateInstructions();
@@ -1316,14 +1345,31 @@
                 instructionElement.style.display = 'block';
             }
             
-            updatePlayerInfoUI();
-            stopTimer();
-            if (isTimedLevel(currentStage)) {
-                timerElement.style.display = 'block';
-                timerElement.textContent = "0.00s";
-            }
+            
+updatePlayerInfoUI();
+if (typeof isSurvivalStage === 'function' && isSurvivalStage(currentStage)) {
+    // Survival: do not cancel the fresh timer started in setupSurvivalArena; just ensure UI is visible with target hint
+    if (typeof timerElement !== 'undefined' && timerElement) {
+        timerElement.style.display = 'block';
+        const hintTarget = (scene && scene.userData && scene.userData.survivalTargetTime) ? scene.userData.survivalTargetTime : 30;
+        try { timerElement.textContent = Number(hintTarget).toFixed(2) + 's'; } catch(e) { timerElement.textContent = "0.00s"; }
+    }
+} else {
+    stopTimer();
+    if (isTimedLevel(currentStage)) {
+        timerElement.style.display = 'block';
+        timerElement.textContent = "0.00s";
+    }
+}
+
         }
         
+        
+        // --- Survival Mode (Turret Arena) Helpers ---
+        const SURVIVAL_STAGE_IDS = [28, 29, 30, 31, 32];
+        function isSurvivalStage(stage) { return SURVIVAL_STAGE_IDS.includes(stage); }
+
+
         function isTimedLevel(stage) { return stage > 0 && stage < TOTAL_LEVELS; }
 
         function getStarRating(stage, time) {
@@ -1391,6 +1437,14 @@
                     greeting = `你好, ${playerProfile.title}。<br><span style="${enStyle}">Hello, ${playerProfile.en_title}.</span><br>`;
                 }
                 switch(currentStage) {
+                case 28: case 29: case 30: case 31: case 32: {
+                    
+                    if (!isTimerRunning || levelStartTime === 0) { break; }
+const elapsed = (clock.getElapsedTime() - levelStartTime);
+                    if (elapsed >= (scene.userData.survivalTargetTime || 30)) {
+                        shouldAdvance = true;
+                    }
+                } break;
                     case 0: text = `欢迎来到认知热身！<br>请熟悉 **WASD** 移动, **空格** 跳跃, **Shift** 下蹲。<br>用准星瞄准靶子, **点击鼠标左键** 射击。<br>熟悉后按 **ESC** 打开菜单进入训练。<br><br><span style="${enStyle}">Welcome to Cognitive Warm-up!<br>Use **WASD** to move, **Space** to jump, and **Shift** to crouch. Aim at targets and **Left-click** to shoot.<br>Press **ESC** to open the menu when ready.</span>`; break;
                     case 1: text = `${greeting}**注意力训练：定点聚焦**<br>请用准星瞄准所有 **红色** 目标。<br>已找到: ${aimedTargets.size} / 4<br><br><span style="${enStyle}">**Attention: Point Focus**<br>Aim at all **red** targets.<br>Found: ${aimedTargets.size} / 4</span>`; break;
                     case 2: text = `${greeting}**反应速度训练：瞬时响应**<br>请快速移动到亮起的 **红色** 目标处。<br>已完成: ${shuttleRunState.completedCount || 0} / 10<br><br><span style="${enStyle}">**Reaction: Quick Response**<br>Quickly move to the lit **red** target.<br>Completed: ${shuttleRunState.completedCount || 0} / 10</span>`; break;
@@ -1404,6 +1458,9 @@
                     case 13: case 14: case 15: text = `${greeting}**策略思维训练：动态博弈 ${currentStage - 12}**<br>迷宫里出现了动态目标！**在它们跑掉前捉住它们**！<br><br><span style="${enStyle}">**Strategic Thinking: Dynamic Chase ${currentStage - 12}**<br>Dynamic targets have appeared! **Catch them**!</span>`; break;
                     case 16: case 17: case 18: case 19: case 20: case 21: text = `${greeting}**顺序记忆训练：地标寻踪**<br>请按顺序找到所有地标！<br>移动后小地图会消失，按 **E键** 可暂停并查看地图（有次数限制）。<br><br><span style="${enStyle}">**Sequential Memory: Landmark Trace**<br>Find all landmarks in order!<br>Minimap disappears on move. Press **E** to pause and view map (limited uses).</span>`; break;
                     case 22: case 23: case 24: case 25: case 26: text = `${greeting}**风险决策训练：火线突围**<br>找到所有地标，同时要小心**防御塔**！<br>摧毁它们可以恢复1点HP并增加1次地图使用次数，也可以选择躲开攻击！<br><br><span style="${enStyle}">**Risk & Decision: Hazard Breakout**<br>Find all landmarks, but watch out for **turrets**!<br>Destroying them restores 1 HP and grants 1 map use. You can also evade their fire!</span>`; break;
+                    case 28: case 29: case 30: case 31: case 32: 
+                        const need = scene.userData.survivalTargetTime || 30;
+                        text = `${greeting}**生存试炼：炮塔竞技**<br>在空旷场地中利用**小墙体**与**左右移动**躲避炮塔射击。<br>HP为5，每次命中-1。坚持 **${need} 秒** 即可通关。<br><br><span style="${enStyle}">**Survival: Turret Arena**<br>Use the small cover and strafe left/right to evade the turret. You have 5 HP; survive **${need} s** to win.</span>`; break;
                     case 27: text = ``; break;
                     default: text = `点击鼠标左键开始<br><span style="font-size:12px;">Left Click to Start</span>`; break;
                 }
@@ -1429,6 +1486,7 @@
             if (currentStage >= 22 && currentStage <= 26) {
                 updateTurrets(deltaTime);
             }
+            if (isSurvivalStage && isSurvivalStage(currentStage)) { updateTurrets(deltaTime); }
 
             animatedObjects.forEach(obj => {
                 if (obj.userData.animation) {
@@ -1441,7 +1499,34 @@
             update3DFireworks(deltaTime);
             updateTrailParticles(deltaTime); 
 
-            if (isTimerRunning) { const elapsedTime = clock.getElapsedTime() - levelStartTime; timerElement.textContent = elapsedTime.toFixed(2) + 's'; }
+            
+if (isTimerRunning) {
+    const elapsedTime = clock.getElapsedTime() - levelStartTime;
+    if (typeof isSurvivalStage === 'function' && isSurvivalStage(currentStage)) {
+        const target = (scene && scene.userData && scene.userData.survivalTargetTime) ? scene.userData.survivalTargetTime : 30;
+        const remaining = Math.max(0, target - elapsedTime);
+        timerElement.textContent = remaining.toFixed(2) + 's';
+        if (!stageCompletionFlag && remaining <= 0.0001) {
+            // Time's up: finish survival
+            stageCompletionFlag = true;
+            if (typeof stopTimer === 'function') stopTimer();
+            // Disable turrets immediately
+            if (Array.isArray(turrets)) {
+                turrets.forEach(t => { if (t && t.userData) { t.userData.disabled = true; t.userData.fireCooldown = Infinity; } });
+            }
+            // Record and show results
+            if (typeof recordTime === 'function') recordTime(currentStage, target);
+            if (typeof saveProgress === 'function') saveProgress();
+            if (typeof updatePlayerInfoUI === 'function') updatePlayerInfoUI();
+            if (typeof updateInstructions === 'function') updateInstructions();
+            if (typeof blockerElement !== 'undefined' && blockerElement) blockerElement.style.display = 'flex';
+            if (document.pointerLockElement) { isTransitioning = true; document.exitPointerLock(); }
+        }
+    } else {
+        timerElement.textContent = elapsedTime.toFixed(2) + 's';
+    }
+}
+
             
             if (minimapContainer.style.display === 'block') drawMinimap(); 
             
@@ -1470,6 +1555,12 @@
             let shouldAdvance = false;
             const playerPos = camera.position;
             switch(currentStage) {
+                case 28: case 29: case 30: case 31: case 32: {
+                    const elapsed = (clock.getElapsedTime() - levelStartTime);
+                    if (elapsed >= (scene.userData.survivalTargetTime || 30)) {
+                        shouldAdvance = true;
+                    }
+                } break;
                 case 1: if (stage1Targets.length > 0 && aimedTargets.size === stage1Targets.length) shouldAdvance = true; break;
                 case 2: case 3: case 4:
                     if (shuttleRunState.activeTarget) {
@@ -1537,7 +1628,7 @@
                 const elapsedTime = (clock.getElapsedTime() - levelStartTime);
                 if (gameMode === 'campaign') {
                     if (currentStage >= unlockedLevel) {
-                         unlockedLevel = Math.min(currentStage + 1, TOTAL_LEVELS + 1);
+                         let _unlock = currentStage + 1; if (_unlock === 6) _unlock = 7; unlockedLevel = Math.min(_unlock, TOTAL_LEVELS + 1);
                     }
                     const newStars = getStarRating(currentStage, elapsedTime);
                     if (!levelStars[currentStage] || newStars > levelStars[currentStage]) {
@@ -2117,7 +2208,7 @@
             camera.quaternion.set(0, 0, 0, 1);
             euler.set(0, 0, 0, 'YXZ');
             
-            scene.background.set(0x4a4a6a);
+            scene.background = new THREE.Color(0x4a4a6a);
             scene.fog = new THREE.Fog(0x4a4a6a, 0, 100);
             
             const mapSize = 80;
@@ -2740,12 +2831,179 @@
         function setupStage25_TurretMaze4() { const layout = [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,'S',0,0,1,0,0,1,0,0,1,0,'T',0,1],[1,1,1,0,1,0,1,1,'T',0,1,0,1,0,1],[1,0,0,0,1,0,'L',0,1,0,1,0,0,0,1],[1,0,1,1,1,1,1,0,1,0,1,1,1,0,1],[1,0,'T',0,0,0,0,0,1,0,0,0,1,0,1],[1,1,1,1,0,1,1,1,1,1,0,1,1,'L',1],[1,'L',0,0,0,0,'T',0,0,0,0,0,0,0,1],[1,1,1,0,1,1,1,1,1,1,1,1,0,1,1],[1,'T',0,0,0,1,0,0,0,0,0,0,'T',0,1],[1,0,1,1,1,1,0,1,1,1,1,0,1,0,1],[1,0,'L',0,0,0,0,1,'T',0,0,0,1,0,1],[1,0,1,1,1,1,1,1,0,1,1,1,1,'L',1],[1,'T',0,0,0,0,0,0,0,0,'T',0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]]; setupLandmarkMazeLevel(layout); }
         function setupStage26_TurretMaze5() { const layout = [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,'S',0,'T',0,0,1,0,0,1,0,0,0,0,1],[1,0,1,1,1,0,1,0,1,1,0,1,1,0,1],[1,0,'L',0,0,0,1,0,'T',0,0,0,0,'L',1],[1,1,1,1,1,0,1,1,1,0,0,0,0,0,1],[1,'T',0,0,0,0,0,0,0,0,1,0,0,0,1],[1,0,1,1,1,1,1,1,1,0,1,1,1,1,1],[1,0,'L',0,0,0,1,0,'T',0,0,0,0,'T',1],[1,1,1,1,1,0,1,0,1,1,1,1,0,1,1],[1,'T',0,0,0,0,1,0,'L',0,0,0,0,0,1],[1,0,1,1,1,1,1,1,1,1,1,1,1,0,1],[1,0,'T',0,0,0,0,0,0,0,1,0,0,0,1],[1,0,1,1,1,1,1,1,1,0,1,'T',1,'L',1],[1,0,'L',0,'T',0,0,0,0,0,1,0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]]; setupLandmarkMazeLevel(layout); }
 
+        // --- NEW: Survival (Turret Arena) stages ---
+        
+function setupSurvivalArena(config) {
+    // Reset camera safely
+    camera.position.set(0, playerHeight, 0);
+    if (camera.quaternion) camera.quaternion.set(0, 0, 0, 1);
+    if (typeof euler !== 'undefined' && euler && typeof euler.set === 'function') {
+        euler.set(0, 0, 0, 'YXZ');
+    }
+    // Safe background & fog
+    scene.background = new THREE.Color(0x2b2b3b);
+    scene.fog = new THREE.Fog(0x2b2b3b, 0, 120);
+
+    const size = (config && config.size) ? config.size : 36;
+    // Floor material with graceful fallback
+    let floorMat = null;
+    try {
+        if (typeof missionCorridorFloorTexture !== 'undefined' && missionCorridorFloorTexture) {
+            missionCorridorFloorTexture.wrapS = missionCorridorFloorTexture.wrapT = THREE.RepeatWrapping;
+            missionCorridorFloorTexture.repeat.set(size / 4, size / 4);
+            missionCorridorFloorTexture.needsUpdate = true;
+            floorMat = new THREE.MeshStandardMaterial({ map: missionCorridorFloorTexture, metalness: 0, roughness: 0.85 });
+        }
+    } catch (e) {}
+    if (!floorMat) {
+        floorMat = new THREE.MeshStandardMaterial({ color: 0x3a3a4a, metalness: 0, roughness: 0.9 });
+    }
+    // Create floor (utility or fallback)
+    if (typeof createFloor === 'function') {
+        createFloor(size, size, floorMat);
+    } else {
+        const geo = new THREE.PlaneGeometry(size, size);
+        const mesh = new THREE.Mesh(geo, floorMat);
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.receiveShadow = true;
+        scene.add(mesh);
+        if (typeof stageObjects !== 'undefined' && stageObjects) stageObjects.push(mesh);
+    }
+    // Extra: explicit invisible floor collider to guarantee ground support
+    try {
+        const floorColliderGeo = new THREE.BoxGeometry(size, 0.5, size);
+        const floorColliderMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.0 });
+        const floorCollider = new THREE.Mesh(floorColliderGeo, floorColliderMat);
+        floorCollider.position.set(0, 0, 0);
+        scene.add(floorCollider);
+        if (typeof stageObjects !== 'undefined' && stageObjects) stageObjects.push(floorCollider);
+        if (typeof collidables !== 'undefined' && collidables) collidables.push(floorCollider);
+    } catch (e) {}
+
+    // Boundaries & cover
+    const boundary = size / 2 - 1;
+    const makeWall = (x,y,z, w,h,d, color) => {
+        if (typeof createWall === 'function') {
+            createWall(x,y,z, w,h,d, color);
+        } else {
+            const g = new THREE.BoxGeometry(w, h, d);
+            const m = new THREE.MeshStandardMaterial({ color: color || 0x777777 });
+            const wall = new THREE.Mesh(g, m);
+            wall.position.set(x,y,z);
+            wall.castShadow = false; wall.receiveShadow = true;
+            scene.add(wall);
+            if (typeof stageObjects !== 'undefined' && stageObjects) stageObjects.push(wall);
+            if (typeof collidables !== 'undefined' && collidables) collidables.push(wall);
+        }
+    };
+    makeWall(0, 0.5, -boundary, size, 1, 0.5, 0x777777);
+    makeWall(0, 0.5,  boundary, size, 1, 0.5, 0x777777);
+    makeWall(-boundary, 0.5, 0, 0.5, 1, size, 0x777777);
+    makeWall( boundary, 0.5, 0, 0.5, 1, size, 0x777777);
+    // Replace big cover with several small covers
+const smallCovers = [
+    {x:-6, z:-2}, {x:-2, z:-2}, {x:2, z:-2}, {x:6, z:-2},
+    {x:-5, z: 2}, {x: 0, z: 2}, {x:5, z: 2}
+];
+smallCovers.forEach(p => makeWall(p.x, 0.8, p.z, 1.2, 3.0, 0.6, 0x999999));
+
+
+    
+    // Patterned turrets: linear ("left-right") or circular ("around")
+    const radius = boundary - 2;
+    const patterns = (config && Array.isArray(config.patterns)) ? config.patterns.slice(0,3) : ['circular'];
+    const createdTurrets = [];
+    patterns.forEach((pat, i) => {
+        let turret = null;
+        const angle0 = (i / patterns.length) * Math.PI * 2;
+        const x0 = Math.cos(angle0) * radius;
+        const z0 = Math.sin(angle0) * radius;
+        try {
+            const before = (Array.isArray(turrets) ? turrets.length : 0);
+            if (typeof createTurret === 'function') {
+                createTurret(x0, z0);
+                if (Array.isArray(turrets) && turrets.length > before) {
+                    turret = turrets[turrets.length - 1];
+                }
+            }
+        } catch (e) { turret = null; }
+        if (!turret || !turret.position) {
+            // fallback simple mesh
+            const g = new THREE.CylinderGeometry(0.3, 0.4, 0.5, 12);
+            const m = new THREE.MeshStandardMaterial({ color: 0xcc3333 });
+            turret = new THREE.Mesh(g, m);
+            scene.add(turret);
+            if (stageObjects) stageObjects.push(turret);
+            if (Array.isArray(turrets)) turrets.push(turret);
+            if (Array.isArray(collidables)) collidables.push(turret);
+        }
+        turret.position.set(x0, 0.25, z0);
+        turret.userData = turret.userData || {};
+        if (pat === 'linear') {
+            // Left-right along X around the arena center, oscillating
+            turret.userData.moveState = { type: 'linear', centerZ: (z0 >= 0 ? (boundary - 0.6) : (-boundary + 0.6)), halfSpan: radius, phase: angle0, omega: (config.omega || 0.12) };
+        } else {
+            // Circular around the perimeter
+            turret.userData.moveState = { type: 'circular', angle: angle0, radius: radius, omega: (config.omega || 0.12), tighten: (config.tighten || 0.12) };
+        }
+        createdTurrets.push(turret);
+    });
+
+    // Animate turret motion per pattern
+    var __survAnim = function(time, dt) {
+        createdTurrets.forEach(t => {
+            if (!t || !t.parent) return;
+            const st = t.userData.moveState || {};
+            if (st.type === 'linear') {
+    // Move back-and-forth along outer edge (fixed Z near boundary)
+    st.phase += st.omega * dt;
+    const x = Math.max(-radius, Math.min(radius, Math.cos(st.phase) * st.halfSpan));
+    const z = (typeof st.centerZ !== 'undefined') ? st.centerZ : (camera && camera.position && camera.position.z >= 0 ? (boundary - 0.6) : (-boundary + 0.6));
+    t.position.set(x, 0.25, z);
+} else {
+                // Circular with slight tighten toward player bearing
+                const playerAngle = Math.atan2(camera.position.z, camera.position.x);
+                let diff = playerAngle - st.angle;
+                while (diff > Math.PI) diff -= 2*Math.PI;
+                while (diff < -Math.PI) diff += 2*Math.PI;
+                const omega = st.omega + (st.tighten || 0) * (diff / Math.PI) * st.omega;
+                st.angle += omega * dt;
+                const x = Math.cos(st.angle) * st.radius;
+                const z = Math.sin(st.angle) * st.radius;
+                t.position.set(x, 0.25, z);
+            }
+        });
+    };
+if (Array.isArray(animatedObjects)) {
+    animatedObjects.push({ userData: { animation: __survAnim } });
+} else {
+    if (!scene.userData._survivalTickers) scene.userData._survivalTickers = [];
+    scene.userData._survivalTickers.push(__survAnim);
+}
+
+    // Survival target time & timer
+    scene.userData.survivalTargetTime = config.targetTime;
+    // Start the timer for survival stages explicitly
+    levelStartTime = clock.getElapsedTime();
+    isTimerRunning = true;
+    if (typeof timerElement !== 'undefined' && timerElement) {
+        timerElement.style.display = 'block';
+        timerElement.textContent = "0.00s";
+    }
+}
+function setupStage28_Survival1() { setupSurvivalArena({ size: 36, targetTime: 30, omega: 0.12, tighten: 0.12, patterns: ['linear'] }); }
+        function setupStage29_Survival2() { setupSurvivalArena({ size: 36, targetTime: 40, omega: 0.12, tighten: 0.12, patterns: ['circular'] }); }
+        function setupStage30_Survival3() { setupSurvivalArena({ size: 36, targetTime: 50, omega: 0.14, tighten: 0.14, patterns: ['linear','linear'] }); }
+        function setupStage31_Survival4() { setupSurvivalArena({ size: 36, targetTime: 60, omega: 0.15, tighten: 0.15, patterns: ['circular','circular'] }); }
+        function setupStage32_Survival5() { setupSurvivalArena({ size: 36, targetTime: 75, omega: 0.16, tighten: 0.16, patterns: ['linear','circular','circular'] }); }
+
+
         function setupStage_Final() {
             camera.position.set(0, playerHeight, 8);
             camera.lookAt(0, playerHeight, 0);
             euler.setFromQuaternion(camera.quaternion, 'YXZ');
             createFloor(30, 30);
-            scene.background.set(0x141428);
+            scene.background = new THREE.Color(0x141428);
             scene.fog = new THREE.Fog(0x141428, 20, 100);
             if (fireworksInterval) clearInterval(fireworksInterval);
             fireworksInterval = setInterval(() => {
