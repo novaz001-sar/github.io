@@ -1,101 +1,11 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>开场 · 农田打地鼠</title>
-  <style>
-    :root{
-      --bg:#e8f7e0; --bg2:#bde6a1; --card:#ffffff; --text:#102a13;
-      --shadow:0 14px 34px rgba(0,0,0,.16); --radius:18px;
-    }
-    html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,'PingFang SC','Microsoft Yahei',sans-serif}
-    /* 开场容器（盖在最上层） */
-    .stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:10}
-    /* 居中卡片 */
-    .card{width:min(1000px,92vw);aspect-ratio:16/9;background:var(--card);border-radius:var(--radius);
-      box-shadow:var(--shadow);overflow:hidden;position:relative}
-    /* 视频 */
-    video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
-    /* 淡出 */
-    .fade-out{animation:fade .6s ease forwards}
-    @keyframes fade{to{opacity:0;visibility:hidden}}
-    /* 顶部 HUD（标题、静音、跳过） */
-    .title{position:absolute;left:12px;top:12px;padding:6px 10px;border-radius:12px;background:rgba(255,255,255,.85);
-      backdrop-filter:blur(4px);font-weight:600}
-    .hud{position:absolute;right:12px;top:12px;display:flex;gap:8px;z-index:2}
-    .btn{padding:8px 12px;border-radius:12px;border:1px solid rgba(0,0,0,.08);cursor:pointer;
-      background:rgba(255,255,255,.85);backdrop-filter:blur(4px)}
-    .btn:hover{background:#fff}
-    /* 缓冲提示 */
-    .tip{position:absolute;left:12px;bottom:12px;padding:6px 10px;border-radius:12px;background:rgba(255,255,255,.85)}
-    /* 如将来需要 iframe 内嵌游戏可用（当前不显示） */
-    #gameFrame{position:fixed;inset:0;border:0;width:100vw;height:100vh;display:none}
-  </style>
+  <meta charset="UTF-8">
+  <meta http-equiv="refresh" content="0; url=game16.2.html">
+  <title>游戏重定向</title>
 </head>
 <body>
-  <div class="stage" id="intro">
-    <div class="card">
-      <div class="title">🌾 农田打地鼠 · 保护农地</div>
-      <div class="hud">
-        <button class="btn" id="btnMute">🔊</button>
-        <button class="btn" id="btnSkip">跳过</button>
-      </div>
-      <video id="introVideo"
-             src="assets_task_.mp4"
-             playsinline webkit-playsinline
-             preload="auto"
-             muted autoplay
-             ></video>
-      <div class="tip" id="tip">正在缓冲视频…（若无声，点任意处解锁声音）</div>
-    </div>
-  </div>
-
-  <!-- 若想留在 github.io 同页内嵌，可在下方启用 iframe 并改 go()；当前方案为播放完跳转到 Vercel -->
-  <iframe id="gameFrame" src="https://whack-a-mole-game-virid.vercel.app" title="Whack-a-Mole"></iframe>
-
-  <script>
-    // ===== 基本参数 =====
-    const DEST = 'https://whack-a-mole-game-virid.vercel.app'; // Vercel 游戏地址
-    const url  = new URL(location.href);
-    if (url.searchParams.get('skip') === '1') location.replace(DEST); // 调试直达
-
-    const VIDEO    = document.getElementById('introVideo');
-    const INTRO    = document.getElementById('intro');
-    const TIP      = document.getElementById('tip');
-    const BTN_SKIP = document.getElementById('btnSkip');
-    const BTN_MUTE = document.getElementById('btnMute');
-    const IFM_GAME = document.getElementById('gameFrame'); // 备用：同页内嵌
-
-    // ===== 自动播放策略：默认静音，用户交互后可开声 =====
-    function safePlay(){
-      const p = VIDEO.play();
-      if (p && typeof p.catch === 'function'){
-        p.catch(()=> TIP.textContent = '浏览器阻止自动播放，请点击画面或跳过');
-      }
-    }
-    safePlay();
-
-    function updateMuteUI(){ BTN_MUTE.textContent = VIDEO.muted ? '🔈' : '🔊'; }
-    BTN_MUTE.addEventListener('click', ()=>{
-      VIDEO.muted = !VIDEO.muted;
-      if (!VIDEO.muted){ VIDEO.volume = 1; safePlay(); }
-      updateMuteUI();
-    });
-    updateMuteUI();
-
-    // ===== 丝滑进入游戏（当前方案：跳转到 Vercel） =====
-    function go(){
-      INTRO.classList.add('fade-out');
-      setTimeout(()=>location.replace(DEST), 450);
-    }
-    VIDEO.addEventListener('ended', go);
-    BTN_SKIP.addEventListener('click', go);
-
-    // 轻触/点击即可解锁声音或续播
-    window.addEventListener('pointerdown', ()=>{ if (VIDEO.paused) safePlay(); }, {passive:true});
-    VIDEO.addEventListener('playing', ()=> TIP.style.display = 'none');
-  </script>
+  如果没有自动跳转，请 <a href="game16.2.html">点击这里进入游戏</a>。
 </body>
 </html>
