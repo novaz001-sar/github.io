@@ -8,6 +8,21 @@ body {
         canvas {
             display: block;
         }
+        #intro-skip-button {
+            position: fixed;
+            right: 22px;
+            bottom: 22px;
+            z-index: 10000;
+            min-width: 120px;
+            min-height: 42px;
+            border: 2px solid rgba(255, 255, 255, 0.85);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.62);
+            color: #fff;
+            cursor: pointer;
+            font-weight: 800;
+            letter-spacing: 0;
+        }
         .overlay {
             position: absolute;
             width: 100%;
@@ -301,7 +316,8 @@ body {
             flex-direction: column;
         }
         .editor-row select,
-        .editor-row input[type="file"] {
+        .editor-row input[type="file"],
+        .editor-row input[type="text"] {
             width: 100%;
             box-sizing: border-box;
             border: 1px solid rgba(255, 255, 255, 0.55);
@@ -310,8 +326,82 @@ body {
             background: rgba(255, 255, 255, 0.12);
             color: #fff;
         }
+        .editor-row input[type="color"] {
+            width: 100%;
+            height: 38px;
+            border: 1px solid rgba(255, 255, 255, 0.55);
+            border-radius: 6px;
+            padding: 3px;
+            background: rgba(255, 255, 255, 0.12);
+        }
+        .editor-row input[type="range"] {
+            width: 100%;
+            accent-color: #00e5ff;
+        }
         .editor-row select option {
             color: #111;
+        }
+        .editor-section {
+            margin: 14px 0;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .editor-section h3 {
+            margin: 0 0 10px;
+            color: #ffea00;
+            font-size: 16px;
+        }
+        .editor-small-title {
+            margin: 12px 0 8px;
+            color: #76ff03;
+            font-size: 13px;
+            font-weight: 900;
+        }
+        .editor-tool-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .editor-tool {
+            min-height: 34px;
+            border: 1px solid rgba(255, 255, 255, 0.48);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            cursor: pointer;
+            font-weight: 800;
+        }
+        .editor-tool.active {
+            background: #ffea00;
+            color: #121212;
+            border-color: #fff;
+        }
+        #editor-grid-canvas {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            height: auto;
+            border: 2px solid rgba(255, 255, 255, 0.7);
+            border-radius: 6px;
+            background: #111;
+            cursor: crosshair;
+            box-sizing: border-box;
+        }
+        .editor-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 28px;
+            margin: 4px 0;
+            font-size: 13px;
+            font-weight: 700;
+            text-align: left;
+        }
+        .editor-checkbox input {
+            width: 17px;
+            height: 17px;
+            flex: 0 0 auto;
+            accent-color: #ffea00;
         }
         .editor-status {
             min-height: 20px;

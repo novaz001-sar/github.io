@@ -12,6 +12,7 @@
         style="position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:9999;">
         Your browser does not support the video tag.
     </video>
+    <button id="intro-skip-button" type="button">跳过 / Skip</button>
     <script src="js/intro.js"></script>
     <div id="mode-selection" class="overlay">
         <h1>选择训练模式 / Select Mode</h1>
@@ -139,9 +140,65 @@
             <input type="file" id="editor-wall-image" accept="image/*">
         </label>
         <label class="editor-row editor-row-stacked">
+            <span id="editor-wall-color-label">墙体配色 / Wall Color</span>
+            <input type="color" id="editor-wall-color" value="#ff00f5">
+        </label>
+        <label class="editor-row editor-row-stacked">
+            <span id="editor-wall-size-label">墙体图片大小 / Wall Image Size</span>
+            <input type="range" id="editor-wall-texture-size" min="0.5" max="4" step="0.1" value="1">
+            <span id="editor-wall-size-value">1.0x</span>
+        </label>
+        <label class="editor-row editor-row-stacked">
             <span id="editor-floor-label">地面图片 / Floor Image</span>
             <input type="file" id="editor-floor-image" accept="image/*">
         </label>
+        <label class="editor-row editor-row-stacked">
+            <span id="editor-floor-color-label">地面配色 / Floor Color</span>
+            <input type="color" id="editor-floor-color" value="#5cff72">
+        </label>
+        <label class="editor-row editor-row-stacked">
+            <span id="editor-floor-size-label">地面图片大小 / Floor Image Size</span>
+            <input type="range" id="editor-floor-texture-size" min="0.5" max="4" step="0.1" value="1">
+            <span id="editor-floor-size-value">1.0x</span>
+        </label>
+        <div class="editor-section">
+            <h3 id="editor-custom-title">自定义关卡 / Custom Level</h3>
+            <label class="editor-row editor-row-stacked">
+                <span id="editor-custom-name-label">名称 / Name</span>
+                <input type="text" id="editor-custom-name" maxlength="28" value="自定义关卡">
+            </label>
+            <div id="editor-tool-label" class="editor-small-title">画笔 / Brush</div>
+            <div id="editor-tool-grid" class="editor-tool-grid">
+                <button type="button" class="editor-tool active" data-tool="wall">墙 / Wall</button>
+                <button type="button" class="editor-tool" data-tool="floor">地 / Floor</button>
+                <button type="button" class="editor-tool" data-tool="start">起点 / Start</button>
+                <button type="button" class="editor-tool" data-tool="finish">终点 / Goal</button>
+                <button type="button" class="editor-tool" data-tool="landmark">路标 / Landmark</button>
+                <button type="button" class="editor-tool" data-tool="npc">NPC</button>
+                <button type="button" class="editor-tool" data-tool="turret">歼灭 / Turret</button>
+            </div>
+            <canvas id="editor-grid-canvas" width="360" height="360"></canvas>
+            <div class="editor-small-title" id="editor-goal-label">游戏目标 / Goals</div>
+            <label class="editor-checkbox"><input type="checkbox" id="editor-goal-reach" checked> <span id="editor-goal-reach-label">抵达终点 / Reach goal</span></label>
+            <label class="editor-checkbox"><input type="checkbox" id="editor-goal-landmarks"> <span id="editor-goal-landmarks-label">路标模式 / Landmarks</span></label>
+            <label class="editor-checkbox"><input type="checkbox" id="editor-goal-npc"> <span id="editor-goal-npc-label">NPC触及模式 / Catch NPCs</span></label>
+            <label class="editor-checkbox"><input type="checkbox" id="editor-goal-annihilation"> <span id="editor-goal-annihilation-label">歼灭模式 / Annihilation</span></label>
+            <div class="editor-small-title" id="editor-minimap-label">小地图 / Minimap</div>
+            <label class="editor-checkbox"><input type="checkbox" id="editor-minimap-enabled" checked> <span id="editor-minimap-enabled-label">启用小地图 / Enable minimap</span></label>
+            <label class="editor-checkbox"><input type="checkbox" id="editor-minimap-centered"> <span id="editor-minimap-centered-label">玩家居中 / Player centered</span></label>
+            <label class="editor-checkbox"><input type="checkbox" id="editor-minimap-rotate"> <span id="editor-minimap-rotate-label">随玩家旋转 / Rotate with player</span></label>
+            <label class="editor-checkbox"><input type="checkbox" id="editor-minimap-click-hide"> <span id="editor-minimap-click-hide-label">点击隐藏 / Click to hide</span></label>
+            <label class="editor-checkbox"><input type="checkbox" id="editor-minimap-static-e"> <span id="editor-minimap-static-e-label">按E显示 / Static, press E</span></label>
+            <label class="editor-row editor-row-stacked">
+                <span id="editor-minimap-size-label">小地图大小 / Minimap Size</span>
+                <input type="range" id="editor-minimap-size" min="120" max="320" step="20" value="200">
+                <span id="editor-minimap-size-value">200px</span>
+            </label>
+            <div class="editor-button-row">
+                <button id="editor-save-custom-button" type="button" class="editor-button">保存关卡 / Save</button>
+                <button id="editor-play-custom-button" type="button" class="editor-button editor-button-secondary">试玩 / Play</button>
+            </div>
+        </div>
         <div id="editor-status" class="editor-status"></div>
         <div class="editor-button-row">
             <button id="editor-apply-button" class="editor-button">应用 / Apply</button>

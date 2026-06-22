@@ -14,14 +14,23 @@
             moving: localStorage.getItem('warmupTargetMoving') === 'true',
             speed: parseFloat(localStorage.getItem('warmupTargetSpeed') || '1.5')
         };
+        const CUSTOM_STAGE_ID = 'custom:local';
+        const DEFAULT_WALL_COLOR = '#ff00f5';
+        const DEFAULT_FLOOR_COLOR = '#5cff72';
         const editorTextureSettings = {
             wallImage: localStorage.getItem('editorWallImage') || '',
             floorImage: localStorage.getItem('editorFloorImage') || '',
+            wallColor: localStorage.getItem('editorWallColor') || DEFAULT_WALL_COLOR,
+            floorColor: localStorage.getItem('editorFloorColor') || DEFAULT_FLOOR_COLOR,
+            wallTextureSize: parseFloat(localStorage.getItem('editorWallTextureSize') || '1'),
+            floorTextureSize: parseFloat(localStorage.getItem('editorFloorTextureSize') || '1'),
             selectedStage: parseInt(localStorage.getItem('editorSelectedStage') || '0', 10),
             active: false
         };
         let editorWallTexture = null;
         let editorFloorTexture = null;
+        let editorTool = 'wall';
+        let customLevelData = null;
 
         // Map arrow keys to WASD movement
         document.addEventListener('keydown', function(event) {
@@ -98,6 +107,10 @@
         let warmupConfirmOverlay; 
         let warmupTargetSettingsPanel, warmupTargetMovingInput, warmupTargetSpeedInput, warmupTargetSpeedValue;
         let editorPanel, editorLevelSelect, editorWallInput, editorFloorInput, editorStatusElement;
+        let editorWallColorInput, editorFloorColorInput, editorWallSizeInput, editorFloorSizeInput;
+        let editorWallSizeValue, editorFloorSizeValue;
+        let editorGridCanvas, editorCustomNameInput, editorSaveCustomButton, editorPlayCustomButton;
+        let editorMinimapSizeInput, editorMinimapSizeValue;
         let editorApplyButton, editorResetButton, editorMainMenuButton;
         let healthContainer, healthBar, healthText;
 
@@ -215,6 +228,18 @@
             editorLevelSelect = document.getElementById('editor-level-select');
             editorWallInput = document.getElementById('editor-wall-image');
             editorFloorInput = document.getElementById('editor-floor-image');
+            editorWallColorInput = document.getElementById('editor-wall-color');
+            editorFloorColorInput = document.getElementById('editor-floor-color');
+            editorWallSizeInput = document.getElementById('editor-wall-texture-size');
+            editorFloorSizeInput = document.getElementById('editor-floor-texture-size');
+            editorWallSizeValue = document.getElementById('editor-wall-size-value');
+            editorFloorSizeValue = document.getElementById('editor-floor-size-value');
+            editorGridCanvas = document.getElementById('editor-grid-canvas');
+            editorCustomNameInput = document.getElementById('editor-custom-name');
+            editorSaveCustomButton = document.getElementById('editor-save-custom-button');
+            editorPlayCustomButton = document.getElementById('editor-play-custom-button');
+            editorMinimapSizeInput = document.getElementById('editor-minimap-size');
+            editorMinimapSizeValue = document.getElementById('editor-minimap-size-value');
             editorStatusElement = document.getElementById('editor-status');
             editorApplyButton = document.getElementById('editor-apply-button');
             editorResetButton = document.getElementById('editor-reset-button');
@@ -285,6 +310,27 @@
             { selector: '#editor-level-label', zh: '关卡', en: 'Level' },
             { selector: '#editor-wall-label', zh: '墙体图片', en: 'Wall Image' },
             { selector: '#editor-floor-label', zh: '地面图片', en: 'Floor Image' },
+            { selector: '#editor-wall-color-label', zh: '墙体配色', en: 'Wall Color' },
+            { selector: '#editor-floor-color-label', zh: '地面配色', en: 'Floor Color' },
+            { selector: '#editor-wall-size-label', zh: '墙体图片大小', en: 'Wall Image Size' },
+            { selector: '#editor-floor-size-label', zh: '地面图片大小', en: 'Floor Image Size' },
+            { selector: '#editor-custom-title', zh: '自定义关卡', en: 'Custom Level' },
+            { selector: '#editor-custom-name-label', zh: '名称', en: 'Name' },
+            { selector: '#editor-tool-label', zh: '画笔', en: 'Brush' },
+            { selector: '#editor-goal-label', zh: '游戏目标', en: 'Goals' },
+            { selector: '#editor-goal-reach-label', zh: '抵达终点', en: 'Reach goal' },
+            { selector: '#editor-goal-landmarks-label', zh: '路标模式', en: 'Landmarks' },
+            { selector: '#editor-goal-npc-label', zh: 'NPC触及模式', en: 'Catch NPCs' },
+            { selector: '#editor-goal-annihilation-label', zh: '歼灭模式', en: 'Annihilation' },
+            { selector: '#editor-minimap-label', zh: '小地图', en: 'Minimap' },
+            { selector: '#editor-minimap-enabled-label', zh: '启用小地图', en: 'Enable minimap' },
+            { selector: '#editor-minimap-centered-label', zh: '玩家居中', en: 'Player centered' },
+            { selector: '#editor-minimap-rotate-label', zh: '随玩家旋转', en: 'Rotate with player' },
+            { selector: '#editor-minimap-click-hide-label', zh: '点击隐藏', en: 'Click to hide' },
+            { selector: '#editor-minimap-static-e-label', zh: '按E显示', en: 'Static, press E' },
+            { selector: '#editor-minimap-size-label', zh: '小地图大小', en: 'Minimap Size' },
+            { selector: '#editor-save-custom-button', zh: '保存关卡', en: 'Save Level' },
+            { selector: '#editor-play-custom-button', zh: '试玩', en: 'Play' },
             { selector: '#editor-apply-button', zh: '应用', en: 'Apply' },
             { selector: '#editor-reset-button', zh: '重置', en: 'Reset' },
             { selector: '#editor-main-menu-button', zh: '主菜单', en: 'Main Menu' },
@@ -330,6 +376,10 @@
             });
             updateWarmupTargetSettingsUI();
             updateEditorStatus();
+            updateEditorMaterialUI();
+            updateEditorToolLabels();
+            updateCustomLevelUI();
+            renderCustomLevelEditorGrid();
             populateEditorLevelSelect();
         }
 
@@ -397,6 +447,43 @@
             if (editorFloorInput) {
                 editorFloorInput.addEventListener('change', () => handleEditorImageUpload(editorFloorInput, 'floor'));
             }
+            if (editorWallColorInput) {
+                editorWallColorInput.value = editorTextureSettings.wallColor;
+                editorWallColorInput.addEventListener('input', () => {
+                    editorTextureSettings.wallColor = editorWallColorInput.value || DEFAULT_WALL_COLOR;
+                    localStorage.setItem('editorWallColor', editorTextureSettings.wallColor);
+                    loadEditorStage(editorTextureSettings.selectedStage);
+                });
+            }
+            if (editorFloorColorInput) {
+                editorFloorColorInput.value = editorTextureSettings.floorColor;
+                editorFloorColorInput.addEventListener('input', () => {
+                    editorTextureSettings.floorColor = editorFloorColorInput.value || DEFAULT_FLOOR_COLOR;
+                    localStorage.setItem('editorFloorColor', editorTextureSettings.floorColor);
+                    loadEditorStage(editorTextureSettings.selectedStage);
+                });
+            }
+            if (editorWallSizeInput) {
+                editorWallSizeInput.value = String(editorTextureSettings.wallTextureSize);
+                editorWallSizeInput.addEventListener('input', () => {
+                    editorTextureSettings.wallTextureSize = parseEditorTextureSize(editorWallSizeInput.value);
+                    localStorage.setItem('editorWallTextureSize', String(editorTextureSettings.wallTextureSize));
+                    updateEditorTextureRepeat(editorWallTexture, 'wall');
+                    updateEditorMaterialUI();
+                    loadEditorStage(editorTextureSettings.selectedStage);
+                });
+            }
+            if (editorFloorSizeInput) {
+                editorFloorSizeInput.value = String(editorTextureSettings.floorTextureSize);
+                editorFloorSizeInput.addEventListener('input', () => {
+                    editorTextureSettings.floorTextureSize = parseEditorTextureSize(editorFloorSizeInput.value);
+                    localStorage.setItem('editorFloorTextureSize', String(editorTextureSettings.floorTextureSize));
+                    updateEditorTextureRepeat(editorFloorTexture, 'floor');
+                    updateEditorMaterialUI();
+                    loadEditorStage(editorTextureSettings.selectedStage);
+                });
+            }
+            setupCustomLevelEditorControls();
             if (editorApplyButton) {
                 editorApplyButton.addEventListener('click', () => loadEditorStage(editorTextureSettings.selectedStage));
             }
@@ -414,6 +501,19 @@
                     if (playerInfoElement) playerInfoElement.style.display = 'none';
                 });
             }
+        }
+
+        function parseEditorTextureSize(value) {
+            return Math.max(0.5, Math.min(4, parseFloat(value) || 1));
+        }
+
+        function updateEditorMaterialUI() {
+            if (editorWallColorInput) editorWallColorInput.value = editorTextureSettings.wallColor || DEFAULT_WALL_COLOR;
+            if (editorFloorColorInput) editorFloorColorInput.value = editorTextureSettings.floorColor || DEFAULT_FLOOR_COLOR;
+            if (editorWallSizeInput) editorWallSizeInput.value = String(editorTextureSettings.wallTextureSize);
+            if (editorFloorSizeInput) editorFloorSizeInput.value = String(editorTextureSettings.floorTextureSize);
+            if (editorWallSizeValue) editorWallSizeValue.textContent = `${Number(editorTextureSettings.wallTextureSize).toFixed(1)}x`;
+            if (editorFloorSizeValue) editorFloorSizeValue.textContent = `${Number(editorTextureSettings.floorTextureSize).toFixed(1)}x`;
         }
 
         function preloadEditorTextures() {
@@ -524,7 +624,7 @@
             });
             texture.wrapS = THREE.RepeatWrapping;
             texture.wrapT = THREE.RepeatWrapping;
-            texture.repeat.set(kind === 'floor' ? 6 : 2, kind === 'floor' ? 6 : 2);
+            updateEditorTextureRepeat(texture, kind);
             if (renderer && renderer.capabilities) {
                 texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
             }
@@ -534,15 +634,29 @@
             return texture;
         }
 
+        function updateEditorTextureRepeat(texture, kind) {
+            if (!texture) return;
+            const size = kind === 'floor'
+                ? parseEditorTextureSize(editorTextureSettings.floorTextureSize)
+                : parseEditorTextureSize(editorTextureSettings.wallTextureSize);
+            const baseRepeat = kind === 'floor' ? 6 : 2;
+            const repeat = Math.max(0.25, baseRepeat / size);
+            texture.repeat.set(repeat, repeat);
+            texture.needsUpdate = true;
+        }
+
         function resetEditorTextures() {
             editorTextureSettings.wallImage = '';
             editorTextureSettings.floorImage = '';
             localStorage.removeItem('editorWallImage');
             localStorage.removeItem('editorFloorImage');
+            localStorage.setItem('editorWallColor', editorTextureSettings.wallColor || DEFAULT_WALL_COLOR);
+            localStorage.setItem('editorFloorColor', editorTextureSettings.floorColor || DEFAULT_FLOOR_COLOR);
             editorWallTexture = null;
             editorFloorTexture = null;
             if (editorWallInput) editorWallInput.value = '';
             if (editorFloorInput) editorFloorInput.value = '';
+            updateEditorMaterialUI();
             loadEditorStage(editorTextureSettings.selectedStage);
             updateEditorStatus();
         }
@@ -551,18 +665,344 @@
             if (!editorStatusElement) return;
             const wallReady = !!editorTextureSettings.wallImage;
             const floorReady = !!editorTextureSettings.floorImage;
+            const customReady = !!localStorage.getItem('customLevelData');
             if (wallReady && floorReady) {
-                editorStatusElement.textContent = t('墙体和地面已自定义', 'Wall and floor customized');
+                editorStatusElement.textContent = customReady
+                    ? t('墙体、地面和自定义关卡已保存', 'Wall, floor, and custom level saved')
+                    : t('墙体和地面已自定义', 'Wall and floor customized');
             } else if (wallReady) {
                 editorStatusElement.textContent = t('墙体已自定义', 'Wall customized');
             } else if (floorReady) {
                 editorStatusElement.textContent = t('地面已自定义', 'Floor customized');
+            } else if (customReady) {
+                editorStatusElement.textContent = t('自定义关卡已保存', 'Custom level saved');
             } else {
                 editorStatusElement.textContent = t('使用高对比默认材质', 'High-contrast default materials');
             }
         }
 
+        function getDefaultCustomLevel() {
+            const rows = 12;
+            const cols = 12;
+            const grid = Array.from({ length: rows }, (_, r) =>
+                Array.from({ length: cols }, (_, c) => (r === 0 || c === 0 || r === rows - 1 || c === cols - 1 ? 1 : 0))
+            );
+            for (let c = 3; c < 9; c++) grid[5][c] = 1;
+            grid[5][6] = 0;
+            return {
+                name: '自定义关卡',
+                rows,
+                cols,
+                grid,
+                start: { r: 1, c: 1 },
+                finish: { r: 10, c: 10 },
+                landmarks: [{ r: 2, c: 8 }, { r: 8, c: 3 }],
+                npcs: [{ r: 9, c: 2 }],
+                turrets: [{ r: 2, c: 10 }],
+                goals: { reach: true, landmarks: false, npc: false, annihilation: false },
+                minimap: {
+                    enabled: true,
+                    playerCentered: false,
+                    rotateWithPlayer: false,
+                    hideOnClick: false,
+                    staticEOnly: false,
+                    size: 200
+                }
+            };
+        }
+
+        function sanitizeCustomLevel(level) {
+            const fallback = getDefaultCustomLevel();
+            const safe = level && typeof level === 'object' ? level : fallback;
+            const rows = Math.max(6, Math.min(20, parseInt(safe.rows, 10) || fallback.rows));
+            const cols = Math.max(6, Math.min(20, parseInt(safe.cols, 10) || fallback.cols));
+            const grid = Array.from({ length: rows }, (_, r) =>
+                Array.from({ length: cols }, (_, c) => {
+                    const row = Array.isArray(safe.grid && safe.grid[r]) ? safe.grid[r] : [];
+                    return row[c] === 1 ? 1 : 0;
+                })
+            );
+            const clampCell = (cell, backup) => ({
+                r: Math.max(0, Math.min(rows - 1, parseInt(cell && cell.r, 10) || backup.r)),
+                c: Math.max(0, Math.min(cols - 1, parseInt(cell && cell.c, 10) || backup.c))
+            });
+            const listCells = (items) => Array.isArray(items)
+                ? items.map(item => clampCell(item, { r: 1, c: 1 }))
+                    .filter((cell, index, arr) => arr.findIndex(other => other.r === cell.r && other.c === cell.c) === index)
+                    .slice(0, 12)
+                : [];
+            const start = clampCell(safe.start, fallback.start);
+            const finish = clampCell(safe.finish, fallback.finish);
+            const landmarks = listCells(safe.landmarks);
+            const npcsList = listCells(safe.npcs);
+            const turretsList = listCells(safe.turrets);
+            [start, finish, ...landmarks, ...npcsList, ...turretsList].forEach(cell => {
+                if (grid[cell.r] && typeof grid[cell.r][cell.c] !== 'undefined') grid[cell.r][cell.c] = 0;
+            });
+            return {
+                name: String(safe.name || fallback.name).slice(0, 28),
+                rows,
+                cols,
+                grid,
+                start,
+                finish,
+                landmarks,
+                npcs: npcsList,
+                turrets: turretsList,
+                goals: {
+                    reach: !!(safe.goals ? safe.goals.reach : fallback.goals.reach),
+                    landmarks: !!(safe.goals ? safe.goals.landmarks : fallback.goals.landmarks),
+                    npc: !!(safe.goals ? safe.goals.npc : fallback.goals.npc),
+                    annihilation: !!(safe.goals ? safe.goals.annihilation : fallback.goals.annihilation)
+                },
+                minimap: {
+                    enabled: safe.minimap ? safe.minimap.enabled !== false : fallback.minimap.enabled,
+                    playerCentered: !!(safe.minimap && safe.minimap.playerCentered),
+                    rotateWithPlayer: !!(safe.minimap && safe.minimap.rotateWithPlayer),
+                    hideOnClick: !!(safe.minimap && safe.minimap.hideOnClick),
+                    staticEOnly: !!(safe.minimap && safe.minimap.staticEOnly),
+                    size: Math.max(120, Math.min(320, parseInt(safe.minimap && safe.minimap.size, 10) || fallback.minimap.size))
+                }
+            };
+        }
+
+        function getStoredCustomLevel() {
+            try {
+                const stored = localStorage.getItem('customLevelData');
+                if (stored) return sanitizeCustomLevel(JSON.parse(stored));
+            } catch (error) {
+                localStorage.removeItem('customLevelData');
+            }
+            return sanitizeCustomLevel(customLevelData || getDefaultCustomLevel());
+        }
+
+        function saveCustomLevelData() {
+            syncCustomLevelFromInputs();
+            customLevelData = sanitizeCustomLevel(customLevelData);
+            localStorage.setItem('customLevelData', JSON.stringify(customLevelData));
+            updateEditorStatus();
+            updateLevelSelectMenu();
+            renderCustomLevelEditorGrid();
+        }
+
+        function setupCustomLevelEditorControls() {
+            customLevelData = getStoredCustomLevel();
+            updateCustomLevelUI();
+            updateEditorToolLabels();
+            renderCustomLevelEditorGrid();
+
+            document.querySelectorAll('.editor-tool').forEach(button => {
+                button.addEventListener('click', () => {
+                    editorTool = button.dataset.tool || 'wall';
+                    updateEditorToolLabels();
+                });
+            });
+            if (editorGridCanvas) {
+                editorGridCanvas.addEventListener('click', handleEditorGridClick);
+            }
+            [
+                'editor-goal-reach', 'editor-goal-landmarks', 'editor-goal-npc', 'editor-goal-annihilation',
+                'editor-minimap-enabled', 'editor-minimap-centered', 'editor-minimap-rotate',
+                'editor-minimap-click-hide', 'editor-minimap-static-e'
+            ].forEach(id => {
+                const input = document.getElementById(id);
+                if (input) input.addEventListener('change', () => {
+                    syncCustomLevelFromInputs();
+                    renderCustomLevelEditorGrid();
+                });
+            });
+            if (editorCustomNameInput) {
+                editorCustomNameInput.addEventListener('input', () => syncCustomLevelFromInputs());
+            }
+            if (editorMinimapSizeInput) {
+                editorMinimapSizeInput.addEventListener('input', () => {
+                    syncCustomLevelFromInputs();
+                    updateCustomLevelUI();
+                });
+            }
+            if (editorSaveCustomButton) {
+                editorSaveCustomButton.addEventListener('click', saveCustomLevelData);
+            }
+            if (editorPlayCustomButton) {
+                editorPlayCustomButton.addEventListener('click', () => {
+                    saveCustomLevelData();
+                    editorTextureSettings.active = false;
+                    if (editorPanel) editorPanel.style.display = 'none';
+                    gameMode = 'free';
+                    loadStage(CUSTOM_STAGE_ID);
+                });
+            }
+            if (minimapContainer) {
+                minimapContainer.addEventListener('click', () => {
+                    const custom = scene && scene.userData ? scene.userData.customLevel : null;
+                    if (custom && custom.minimap && custom.minimap.hideOnClick) {
+                        minimapContainer.style.display = 'none';
+                    }
+                });
+            }
+        }
+
+        function syncCustomLevelFromInputs() {
+            if (!customLevelData) customLevelData = getDefaultCustomLevel();
+            customLevelData.name = (editorCustomNameInput && editorCustomNameInput.value.trim()) || t('自定义关卡', 'Custom Level');
+            customLevelData.goals = {
+                reach: !!document.getElementById('editor-goal-reach')?.checked,
+                landmarks: !!document.getElementById('editor-goal-landmarks')?.checked,
+                npc: !!document.getElementById('editor-goal-npc')?.checked,
+                annihilation: !!document.getElementById('editor-goal-annihilation')?.checked
+            };
+            if (!customLevelData.goals.reach && !customLevelData.goals.landmarks && !customLevelData.goals.npc && !customLevelData.goals.annihilation) {
+                customLevelData.goals.reach = true;
+                const reachInput = document.getElementById('editor-goal-reach');
+                if (reachInput) reachInput.checked = true;
+            }
+            customLevelData.minimap = {
+                enabled: !!document.getElementById('editor-minimap-enabled')?.checked,
+                playerCentered: !!document.getElementById('editor-minimap-centered')?.checked,
+                rotateWithPlayer: !!document.getElementById('editor-minimap-rotate')?.checked,
+                hideOnClick: !!document.getElementById('editor-minimap-click-hide')?.checked,
+                staticEOnly: !!document.getElementById('editor-minimap-static-e')?.checked,
+                size: Math.max(120, Math.min(320, parseInt(editorMinimapSizeInput && editorMinimapSizeInput.value, 10) || 200))
+            };
+        }
+
+        function updateCustomLevelUI() {
+            if (!customLevelData) customLevelData = getStoredCustomLevel();
+            if (editorCustomNameInput) editorCustomNameInput.value = customLevelData.name || t('自定义关卡', 'Custom Level');
+            const setChecked = (id, value) => {
+                const input = document.getElementById(id);
+                if (input) input.checked = !!value;
+            };
+            setChecked('editor-goal-reach', customLevelData.goals.reach);
+            setChecked('editor-goal-landmarks', customLevelData.goals.landmarks);
+            setChecked('editor-goal-npc', customLevelData.goals.npc);
+            setChecked('editor-goal-annihilation', customLevelData.goals.annihilation);
+            setChecked('editor-minimap-enabled', customLevelData.minimap.enabled);
+            setChecked('editor-minimap-centered', customLevelData.minimap.playerCentered);
+            setChecked('editor-minimap-rotate', customLevelData.minimap.rotateWithPlayer);
+            setChecked('editor-minimap-click-hide', customLevelData.minimap.hideOnClick);
+            setChecked('editor-minimap-static-e', customLevelData.minimap.staticEOnly);
+            if (editorMinimapSizeInput) editorMinimapSizeInput.value = String(customLevelData.minimap.size);
+            if (editorMinimapSizeValue) editorMinimapSizeValue.textContent = `${customLevelData.minimap.size}px`;
+        }
+
+        function updateEditorToolLabels() {
+            const labels = {
+                wall: t('墙', 'Wall'),
+                floor: t('地', 'Floor'),
+                start: t('起点', 'Start'),
+                finish: t('终点', 'Goal'),
+                landmark: t('路标', 'Landmark'),
+                npc: 'NPC',
+                turret: t('歼灭', 'Turret')
+            };
+            document.querySelectorAll('.editor-tool').forEach(button => {
+                const tool = button.dataset.tool;
+                button.textContent = labels[tool] || tool;
+                button.classList.toggle('active', tool === editorTool);
+            });
+        }
+
+        function handleEditorGridClick(event) {
+            if (!editorGridCanvas) return;
+            if (!customLevelData) customLevelData = getStoredCustomLevel();
+            const rect = editorGridCanvas.getBoundingClientRect();
+            const x = (event.clientX - rect.left) / rect.width;
+            const y = (event.clientY - rect.top) / rect.height;
+            const c = Math.max(0, Math.min(customLevelData.cols - 1, Math.floor(x * customLevelData.cols)));
+            const r = Math.max(0, Math.min(customLevelData.rows - 1, Math.floor(y * customLevelData.rows)));
+            applyEditorToolToCell(r, c);
+            renderCustomLevelEditorGrid();
+        }
+
+        function removeCustomMarkersAt(r, c) {
+            if (!customLevelData) return;
+            ['landmarks', 'npcs', 'turrets'].forEach(key => {
+                customLevelData[key] = customLevelData[key].filter(item => !(item.r === r && item.c === c));
+            });
+        }
+
+        function toggleCustomMarker(listName, r, c) {
+            const list = customLevelData[listName] || [];
+            const existing = list.findIndex(item => item.r === r && item.c === c);
+            if (existing >= 0) {
+                list.splice(existing, 1);
+            } else {
+                removeCustomMarkersAt(r, c);
+                list.push({ r, c });
+            }
+            customLevelData[listName] = list.slice(0, 12);
+            customLevelData.grid[r][c] = 0;
+        }
+
+        function applyEditorToolToCell(r, c) {
+            if (!customLevelData) return;
+            if (editorTool === 'wall') {
+                customLevelData.grid[r][c] = 1;
+                if (customLevelData.start.r === r && customLevelData.start.c === c) customLevelData.start = { r: 1, c: 1 };
+                if (customLevelData.finish.r === r && customLevelData.finish.c === c) customLevelData.finish = { r: customLevelData.rows - 2, c: customLevelData.cols - 2 };
+                removeCustomMarkersAt(r, c);
+            } else if (editorTool === 'floor') {
+                customLevelData.grid[r][c] = 0;
+                removeCustomMarkersAt(r, c);
+            } else if (editorTool === 'start') {
+                customLevelData.grid[r][c] = 0;
+                removeCustomMarkersAt(r, c);
+                customLevelData.start = { r, c };
+            } else if (editorTool === 'finish') {
+                customLevelData.grid[r][c] = 0;
+                removeCustomMarkersAt(r, c);
+                customLevelData.finish = { r, c };
+            } else if (editorTool === 'landmark') {
+                toggleCustomMarker('landmarks', r, c);
+            } else if (editorTool === 'npc') {
+                toggleCustomMarker('npcs', r, c);
+            } else if (editorTool === 'turret') {
+                toggleCustomMarker('turrets', r, c);
+            }
+            syncCustomLevelFromInputs();
+        }
+
+        function renderCustomLevelEditorGrid() {
+            if (!editorGridCanvas) return;
+            if (!customLevelData) customLevelData = getStoredCustomLevel();
+            const ctx = editorGridCanvas.getContext('2d');
+            const width = editorGridCanvas.width;
+            const height = editorGridCanvas.height;
+            const cellW = width / customLevelData.cols;
+            const cellH = height / customLevelData.rows;
+            ctx.clearRect(0, 0, width, height);
+            for (let r = 0; r < customLevelData.rows; r++) {
+                for (let c = 0; c < customLevelData.cols; c++) {
+                    ctx.fillStyle = customLevelData.grid[r][c] === 1 ? '#ff00f5' : '#123cff';
+                    ctx.fillRect(c * cellW, r * cellH, cellW, cellH);
+                    ctx.strokeStyle = 'rgba(255,255,255,0.26)';
+                    ctx.strokeRect(c * cellW, r * cellH, cellW, cellH);
+                }
+            }
+            const drawMarker = (cell, label, color) => {
+                if (!cell) return;
+                const x = cell.c * cellW + cellW / 2;
+                const y = cell.r * cellH + cellH / 2;
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(x, y, Math.min(cellW, cellH) * 0.32, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#000';
+                ctx.font = `bold ${Math.max(10, Math.floor(cellH * 0.36))}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(label, x, y);
+            };
+            drawMarker(customLevelData.start, 'S', '#76ff03');
+            drawMarker(customLevelData.finish, 'F', '#ffea00');
+            customLevelData.landmarks.forEach((cell, index) => drawMarker(cell, String(index + 1), '#ffffff'));
+            customLevelData.npcs.forEach(cell => drawMarker(cell, 'N', '#00e5ff'));
+            customLevelData.turrets.forEach(cell => drawMarker(cell, 'T', '#ff4f9f'));
+        }
+
         function updateCurrentCounters() {
+            if (isCustomStage(currentStage)) updateCustomGoalCounter();
             if (currentStage >= 13 && currentStage <= 15) updateNpcCounter();
             if (currentStage >= 16 && currentStage <= 26) {
                 updateLandmarkCounter();
@@ -817,6 +1257,17 @@ function updateLevelSelectMenu() {
     const ordered = mapping.slice(0, insertAt).concat(survival, mapping.slice(insertAt));
 
     levelSelectMenu.innerHTML = '';
+    if (gameMode === 'free' && localStorage.getItem('customLevelData')) {
+        const customLevel = getStoredCustomLevel();
+        const button = document.createElement('button');
+        button.className = 'menu-button';
+        button.innerHTML = `${t('自定义关卡', 'Custom Level')}<br><span style="font-size:12px;">${customLevel.name || t('本地关卡', 'Local Level')}</span>`;
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            hideMenuAndLoad(CUSTOM_STAGE_ID);
+        });
+        levelSelectMenu.appendChild(button);
+    }
     ordered.forEach(({stageId, zh, en}) => {
         const button = document.createElement('button');
         button.className = 'menu-button';
@@ -936,10 +1387,12 @@ function updateLevelSelectMenu() {
             hasPlayerMoved = false;
             canPlayerMove = true;
             isPlayerDead = false;
+            const customLevelForStage = isCustomStage(currentStage) ? getStoredCustomLevel() : null;
+            const customGoalsForStage = customLevelForStage ? customLevelForStage.goals : {};
             
             playerHealth = maxPlayerHealth;
             updateHealthBar();
-            const isTurretLevel = (currentStage >= 22 && currentStage <= 26);
+            const isTurretLevel = (currentStage >= 22 && currentStage <= 26) || !!customGoalsForStage.annihilation;
             const isSurvival = isSurvivalStage(currentStage);
             // Per-stage HP: Survival uses 5 HP, others default to 3
             maxPlayerHealth = isSurvival ? 5 : 3;
@@ -987,8 +1440,12 @@ if (toyGun) toyGun.visible = (stageIndex === 0 || isTurretLevel) && !isSurvival;
             dirLight.shadow.mapSize.height = 2048;
             scene.add(dirLight);
             
-            const isMinimapVisible = (currentStage === 6 || (currentStage >= 9 && currentStage <= 26));
+            const isMinimapVisible = customLevelForStage
+                ? (customLevelForStage.minimap.enabled && !customLevelForStage.minimap.staticEOnly)
+                : (currentStage === 6 || (currentStage >= 9 && currentStage <= 26));
             minimapContainer.style.display = isMinimapVisible ? 'block' : 'none';
+            if (customLevelForStage) resizeMinimap(customLevelForStage.minimap.size);
+            else resizeMinimap(200);
             
             playerVelocity.set(0, 0, 0);
             isCrouching = false; 
@@ -999,7 +1456,9 @@ if (toyGun) toyGun.visible = (stageIndex === 0 || isTurretLevel) && !isSurvival;
             trainingCommandElement.style.display = 'none';
             updateWarmupTargetSettingsUI();
 
-            switch(currentStage) {
+            if (customLevelForStage) {
+                setupCustomLevel(customLevelForStage);
+            } else switch(currentStage) {
                 case 0: setupStage0_Warmup(); break;
                 case 1: setupStage1_Look(); break;
                 case 2: setupStage3_ShuttleRun_Static(); break;
@@ -1065,8 +1524,21 @@ if (typeof isSurvivalStage === 'function' && isSurvivalStage(currentStage)) {
         const SURVIVAL_STAGE_IDS = [28, 29, 30, 31, 32];
         function isSurvivalStage(stage) { return SURVIVAL_STAGE_IDS.includes(stage); }
 
+        function isCustomStage(stage) { return stage === CUSTOM_STAGE_ID; }
 
-        function isTimedLevel(stage) { return stage > 0 && stage < TOTAL_LEVELS; }
+        function resizeMinimap(size) {
+            const nextSize = Math.max(120, Math.min(320, parseInt(size, 10) || 200));
+            if (minimapContainer) {
+                minimapContainer.style.width = `${nextSize}px`;
+                minimapContainer.style.height = `${nextSize}px`;
+            }
+            if (minimap) {
+                minimap.width = nextSize;
+                minimap.height = nextSize;
+            }
+        }
+
+        function isTimedLevel(stage) { return isCustomStage(stage) || (stage > 0 && stage < TOTAL_LEVELS); }
 
         function getStarRating(stage, time) {
             const thresholds = starTimeThresholds[stage];
@@ -1132,7 +1604,19 @@ if (typeof isSurvivalStage === 'function' && isSurvivalStage(currentStage)) {
                     }
                     greeting = `你好, ${playerProfile.title}。<br><span style="${enStyle}">Hello, ${playerProfile.en_title}.</span><br>`;
                 }
-                switch(currentStage) {
+                if (isCustomStage(currentStage)) {
+                    const custom = scene.userData.customLevel || getStoredCustomLevel();
+                    const goals = scene.userData.customGoals || custom.goals || {};
+                    const goalTexts = [];
+                    if (goals.reach) goalTexts.push(t('抵达终点', 'Reach the goal'));
+                    if (goals.landmarks) goalTexts.push(t('按顺序触碰路标', 'Touch landmarks in order'));
+                    if (goals.npc) goalTexts.push(t('触及所有NPC', 'Catch all NPCs'));
+                    if (goals.annihilation) goalTexts.push(t('歼灭所有炮塔', 'Destroy all turrets'));
+                    const mapHint = custom.minimap && custom.minimap.enabled
+                        ? (custom.minimap.staticEOnly ? t('小地图按 E 显示/隐藏。', 'Press E to show/hide the minimap.') : t('小地图会显示在屏幕上，也可按 E 切换。', 'The minimap is visible; press E to toggle it.'))
+                        : t('此关未启用小地图。', 'Minimap is disabled for this level.');
+                    text = `**${custom.name || t('自定义关卡', 'Custom Level')}**<br>${goalTexts.join('<br>')}<br>${mapHint}<br><br><span style="${enStyle}">**${custom.name || 'Custom Level'}**<br>${goalTexts.join('<br>')}<br>${mapHint}</span>`;
+                } else switch(currentStage) {
                 case 28: case 29: case 30: case 31: case 32: {
                     
                     if (!isTimerRunning || levelStartTime === 0) { break; }
@@ -1180,6 +1664,9 @@ const elapsed = (clock.getElapsedTime() - levelStartTime);
                 updateShuttleRunTargets(deltaTime);
             }
             if (currentStage >= 22 && currentStage <= 26) {
+                updateTurrets(deltaTime);
+            }
+            if (isCustomStage(currentStage) && scene.userData.customGoals && scene.userData.customGoals.annihilation) {
                 updateTurrets(deltaTime);
             }
             if (isSurvivalStage && isSurvivalStage(currentStage)) { updateTurrets(deltaTime); }
@@ -1234,7 +1721,8 @@ if (isTimerRunning) {
                 }
                 if (currentStage === 1) handleAiming();
                 if (currentStage === 5) handleCorridorAiming();
-                if (currentStage >= 13 && currentStage <= 15 && npcs.length > 0) npcs.forEach(npc => updateNPC(npc, deltaTime));
+                if ((currentStage >= 13 && currentStage <= 15) && npcs.length > 0) npcs.forEach(npc => updateNPC(npc, deltaTime));
+                if (isCustomStage(currentStage) && scene.userData.customGoals && scene.userData.customGoals.npc && npcs.length > 0) npcs.forEach(npc => updateNPC(npc, deltaTime));
                 checkStageCompletion();
                 updateKeyDisplay();
             }
@@ -1250,7 +1738,9 @@ if (isTimerRunning) {
             if (stageCompletionFlag || isTransitioning || isPlayerDead) return;
             let shouldAdvance = false;
             const playerPos = camera.position;
-            switch(currentStage) {
+            if (isCustomStage(currentStage)) {
+                shouldAdvance = checkCustomStageCompletion(playerPos);
+            } else switch(currentStage) {
                 case 28: case 29: case 30: case 31: case 32: {
                     const elapsed = (clock.getElapsedTime() - levelStartTime);
                     if (elapsed >= (scene.userData.survivalTargetTime || 30)) {
@@ -1343,6 +1833,63 @@ if (isTimerRunning) {
             }
         }
 
+        function checkCustomStageCompletion(playerPos) {
+            const custom = scene.userData.customLevel;
+            const goals = scene.userData.customGoals || {};
+            const state = scene.userData.customGoalState || {};
+            if (!custom) return false;
+
+            if (goals.reach && !state.reached) {
+                const endPos = scene.userData.endPos || scene.getObjectByName("finish_flag")?.position;
+                if (endPos && playerPos.distanceTo(endPos) < 3) {
+                    state.reached = true;
+                    create3DFirework(new THREE.Vector3(endPos.x, 1, endPos.z));
+                }
+            }
+
+            if (goals.landmarks && !state.landmarks) {
+                if (landmarks.length === 0) {
+                    state.landmarks = true;
+                } else if (nextLandmarkIndex < landmarks.length) {
+                    const nextLandmark = landmarks[nextLandmarkIndex];
+                    if (!nextLandmark.userData.isFound && playerPos.distanceTo(nextLandmark.position) < 3) {
+                        nextLandmark.material.color.setHex(0x00ff00);
+                        nextLandmark.material.emissive.setHex(0x008800);
+                        nextLandmark.userData.isFound = true;
+                        create3DFirework(nextLandmark.position);
+                        nextLandmarkIndex++;
+                        updateLandmarkCounter();
+                    }
+                    state.landmarks = nextLandmarkIndex >= landmarks.length;
+                }
+            }
+
+            if (goals.npc && !state.npc) {
+                const playerPos2D = new THREE.Vector2(playerPos.x, playerPos.z);
+                for (let i = npcs.length - 1; i >= 0; i--) {
+                    const npc = npcs[i];
+                    if (playerPos2D.distanceTo(new THREE.Vector2(npc.position.x, npc.position.z)) < 2.5) {
+                        scene.remove(npc);
+                        npcs.splice(i, 1);
+                        create3DFirework(npc.position);
+                        updateNpcCounter();
+                    }
+                }
+                state.npc = npcs.length === 0;
+            }
+
+            if (goals.annihilation && !state.annihilation) {
+                state.annihilation = turrets.length === 0;
+            }
+
+            scene.userData.customGoalState = state;
+            updateCustomGoalCounter();
+            return (!goals.reach || state.reached)
+                && (!goals.landmarks || state.landmarks)
+                && (!goals.npc || state.npc)
+                && (!goals.annihilation || state.annihilation);
+        }
+
         function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
         
         function onKeyDown(event) {
@@ -1362,6 +1909,10 @@ if (isTimerRunning) {
 			  }
 			  return;
 			}
+            if (event.code === 'KeyE' && isCustomStage(currentStage)) {
+                handleCustomMinimapKey();
+                return;
+            }
             if (event.code === 'KeyE' && (currentStage >= 16 && currentStage <= 26)) {
                 if (minimapUsesLeft > 0) {
                     if (minimapContainer.style.display === 'none') { 
@@ -1413,10 +1964,21 @@ if (isTimerRunning) {
 			}
 
             keys[event.code] = false;
+            if (event.code === 'KeyE' && isCustomStage(currentStage)) {
+                return;
+            }
             if (event.code === 'KeyE' && (currentStage >= 16 && currentStage <= 26)) {
                 canPlayerMove = true;
                 if (hasPlayerMoved) minimapContainer.style.display = 'none';
             }
+        }
+
+        function handleCustomMinimapKey() {
+            const custom = scene.userData.customLevel;
+            if (!custom || !custom.minimap || !custom.minimap.enabled) return;
+            const isVisible = minimapContainer.style.display === 'block';
+            minimapContainer.style.display = isVisible ? 'none' : 'block';
+            if (!isVisible) drawMinimap();
         }
 
         // --- Helper Functions ---
@@ -1594,17 +2156,26 @@ if (isTimerRunning) {
         };
 
         function createWallFaceMaterial(directionColor, sourceColor = 0xaaaaaa) {
-            const color = new THREE.Color(directionColor);
-            if (sourceColor !== 0xaaaaaa) {
-                color.lerp(new THREE.Color(sourceColor), editorWallTexture ? 0.08 : 0.14);
+            if (editorWallTexture) {
+                return new THREE.MeshStandardMaterial({
+                    color: 0xffffff,
+                    map: editorWallTexture,
+                    emissive: 0x000000,
+                    metalness: 0.92,
+                    roughness: 0.2
+                });
             }
-            const emissive = color.clone().multiplyScalar(editorWallTexture ? 0.1 : 0.2);
+            const selectedWallColor = editorTextureSettings.wallColor || '';
+            const color = new THREE.Color(selectedWallColor || directionColor);
+            if (sourceColor !== 0xaaaaaa) {
+                color.lerp(new THREE.Color(sourceColor), selectedWallColor ? 0.06 : 0.14);
+            }
+            const emissive = color.clone().multiplyScalar(0.2);
             return new THREE.MeshStandardMaterial({
                 color,
                 emissive,
-                map: editorWallTexture || null,
-                metalness: editorWallTexture ? 0.92 : 0.88,
-                roughness: editorWallTexture ? 0.2 : 0.14
+                metalness: 0.88,
+                roughness: 0.14
             });
         }
 
@@ -1732,13 +2303,13 @@ if (isTimerRunning) {
                     metalness: 0.58,
                     roughness: 0.26
                 })
-                : (material || new THREE.MeshStandardMaterial({
-                    color: 0x5cff72,
+                : new THREE.MeshStandardMaterial({
+                    color: editorTextureSettings.floorColor || DEFAULT_FLOOR_COLOR,
                     emissive: 0x103d18,
                     side: THREE.DoubleSide,
                     metalness: 0.32,
                     roughness: 0.34
-                }));
+                });
             const f = new THREE.Mesh(g, m);
             f.rotation.x = -Math.PI / 2;
             f.userData.isFloor = true;
@@ -1858,6 +2429,83 @@ if (isTimerRunning) {
         function createLandmark(x, z, num) { const lg = new THREE.CylinderGeometry(1, 1, 0.5, 32); const lm = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xccaa00, transparent: true, opacity: 0.8 }); const l = new THREE.Mesh(lg, lm); l.position.set(x, 0.25, z); l.userData = { isLandmark: true, number: num, isFound: false }; scene.add(l); stageObjects.push(l); landmarks.push(l); const loader = new THREE.FontLoader(); loader.load('https://threejs.org/examples/fonts/helvetiker_bold.typeface.json', (font) => { const tg = new THREE.TextGeometry(num.toString(), { font: font, size: 0.8, height: 0.1 }); tg.computeBoundingBox(); const tm = new THREE.MeshBasicMaterial({ color: 0x000000 }); const t = new THREE.Mesh(tg, tm); t.position.x = -0.5 * (tg.boundingBox.max.x - tg.boundingBox.min.x); t.position.y = 0.3; t.rotation.x = -Math.PI / 2; l.add(t); }); return l; }
         function createInstructionText(text, font, position, color = 0xffffff) { const textLines = text.split('\n'); const textGroup = new THREE.Group(); const textMat = new THREE.MeshBasicMaterial({ color: color }); textLines.forEach((line, index) => { const textGeo = new THREE.TextGeometry(line, { font: font, size: 0.3, height: 0.01 }); textGeo.computeBoundingBox(); const textMesh = new THREE.Mesh(textGeo, textMat); textMesh.position.x = -0.5 * (textGeo.boundingBox.max.x - textGeo.boundingBox.min.x); textMesh.position.y = -index * 0.4; textGroup.add(textMesh); }); textGroup.position.copy(position); textGroup.rotation.x = -Math.PI / 2; scene.add(textGroup); stageObjects.push(textGroup); return textGroup; }
         function createPracticeAreaLayout(withObstacles = true) { createFloor(30, 30); createWall(0, 2.5, -15, 30, 5, 0.2); createWall(0, 2.5, 15, 30, 5, 0.2); createWall(-15, 2.5, 0, 0.2, 5, 30); createWall(15, 2.5, 0, 0.2, 5, 30); if (withObstacles) { const oW = 30, oH = 1.2, oD = 0.2; for (let i = 0; i < 5; i++) { createWall(0, oH / 2, -2 - (i * 2), oW, oH, oD, 0xcc5555); } } }
+
+        function setupCustomLevel(level) {
+            const custom = sanitizeCustomLevel(level);
+            const cell = 5;
+            const mapWidth = custom.cols * cell;
+            const mapDepth = custom.rows * cell;
+            const offsetX = -mapWidth / 2;
+            const offsetZ = -mapDepth / 2;
+            const cellCenter = (gridCell) => new THREE.Vector3(
+                gridCell.c * cell + offsetX + cell / 2,
+                0,
+                gridCell.r * cell + offsetZ + cell / 2
+            );
+
+            createFloor(mapWidth, mapDepth);
+            for (let r = 0; r < custom.rows; r++) {
+                for (let c = 0; c < custom.cols; c++) {
+                    if (custom.grid[r][c] === 1) {
+                        const pos = cellCenter({ r, c });
+                        createWall(pos.x, 2.5, pos.z, cell, 5, cell);
+                    }
+                }
+            }
+
+            const startPos = cellCenter(custom.start);
+            camera.position.set(startPos.x, playerHeight, startPos.z);
+            camera.quaternion.set(0, 0, 0, 1);
+            euler.set(0, 0, 0, 'YXZ');
+            camera.quaternion.setFromEuler(euler);
+
+            let endPos = null;
+            if (custom.goals.reach) {
+                const finishPos = cellCenter(custom.finish);
+                endPos = new THREE.Vector3(finishPos.x, 0, finishPos.z);
+                createFinishFlag(finishPos.x, 0, finishPos.z);
+            }
+
+            if (custom.goals.landmarks) {
+                custom.landmarks.forEach((gridCell, index) => {
+                    const pos = cellCenter(gridCell);
+                    createLandmark(pos.x, pos.z, index + 1);
+                });
+                landmarkCounterElement.style.display = landmarks.length > 0 ? 'block' : 'none';
+            }
+
+            if (custom.goals.npc) {
+                custom.npcs.forEach(gridCell => {
+                    const pos = cellCenter(gridCell);
+                    const npc = createCapsule(0.4, 1.8, 0x0099ff);
+                    npc.position.set(pos.x, 0.9, pos.z);
+                    scene.add(npc);
+                    npcs.push(npc);
+                    stageObjects.push(npc);
+                });
+                scene.userData.totalNpcs = npcs.length;
+                npcCounterElement.style.display = npcs.length > 0 ? 'block' : 'none';
+            }
+
+            if (custom.goals.annihilation) {
+                custom.turrets.forEach(gridCell => {
+                    const pos = cellCenter(gridCell);
+                    createTurret(pos.x, pos.z);
+                });
+                genericCounterElement.style.display = 'block';
+            }
+
+            scene.userData.customLevel = custom;
+            scene.userData.customGoals = custom.goals;
+            scene.userData.customGoalState = { reached: !custom.goals.reach, landmarks: !custom.goals.landmarks, npc: !custom.goals.npc, annihilation: !custom.goals.annihilation };
+            scene.userData.mazeLayout = custom.grid;
+            scene.userData.mazeRows = custom.rows;
+            scene.userData.mazeCols = custom.cols;
+            scene.userData.cellSize = cell;
+            scene.userData.endPos = endPos;
+            scene.userData.startPos = new THREE.Vector3(startPos.x, 0, startPos.z);
+            updateCustomGoalCounter();
+        }
         
         function createCourtyardLamp(x, y, z) {
             const lampGroup = new THREE.Group();
@@ -3359,6 +4007,20 @@ function setupStage28_Survival1() { setupSurvivalArena({ size: 36, targetTime: 3
         function updateNpcCounter() { const total = scene.userData.totalNpcs || 0; const remaining = npcs.length; npcCounterElement.innerHTML = `${t('已捕捉', 'Caught')}: ${total - remaining} / ${total}`; }
         function updateLandmarkCounter() { landmarkCounterElement.innerHTML = `${t('已找到', 'Found')}: ${nextLandmarkIndex} / ${landmarks.length}`; }
         function updateGenericCounter(text) { genericCounterElement.innerHTML = text; }
+        function updateCustomGoalCounter() {
+            if (!isCustomStage(currentStage) || !genericCounterElement) return;
+            const custom = scene.userData.customLevel;
+            const goals = scene.userData.customGoals || {};
+            const state = scene.userData.customGoalState || {};
+            if (!custom) return;
+            const parts = [];
+            if (goals.reach) parts.push(`${t('终点', 'Goal')}: ${state.reached ? t('完成', 'Done') : t('未完成', 'Open')}`);
+            if (goals.landmarks) parts.push(`${t('路标', 'Marks')}: ${nextLandmarkIndex} / ${landmarks.length}`);
+            if (goals.npc) parts.push(`NPC: ${(scene.userData.totalNpcs || 0) - npcs.length} / ${scene.userData.totalNpcs || 0}`);
+            if (goals.annihilation) parts.push(`${t('歼灭', 'Targets')}: ${state.annihilation ? t('完成', 'Done') : turrets.length}`);
+            genericCounterElement.innerHTML = parts.join(' | ') || t('自定义目标', 'Custom Goals');
+            genericCounterElement.style.display = 'block';
+        }
         
         function updateMapUsesCounter() {
             mapUsesCounterElement.innerHTML = `${t('地图剩余次数', 'Map Uses Left')}: ${minimapUsesLeft}`;
@@ -3437,7 +4099,111 @@ function setupStage28_Survival1() { setupSurvivalArena({ size: 36, targetTime: 3
             }
         }
 
+        function drawCustomMinimap() {
+            const custom = scene.userData.customLevel;
+            if (!minimapCtx || !custom || !custom.minimap || !custom.minimap.enabled) return;
+            resizeMinimap(custom.minimap.size);
+            const rows = custom.rows;
+            const cols = custom.cols;
+            const cellSize = scene.userData.cellSize || 5;
+            const canvasWidth = minimap.width;
+            const canvasHeight = minimap.height;
+            const mapWorldWidth = cols * cellSize;
+            const mapWorldHeight = rows * cellSize;
+            const playerCentered = custom.minimap.playerCentered || custom.minimap.rotateWithPlayer;
+            const scale = playerCentered
+                ? canvasWidth / (cellSize * 8)
+                : Math.min(canvasWidth / mapWorldWidth, canvasHeight / mapWorldHeight);
+            const worldOffsetX = -mapWorldWidth / 2;
+            const worldOffsetZ = -mapWorldHeight / 2;
+            const mapOffsetX = (canvasWidth - mapWorldWidth * scale) / 2;
+            const mapOffsetY = (canvasHeight - mapWorldHeight * scale) / 2;
+            const rotate = custom.minimap.rotateWithPlayer;
+            const cos = Math.cos(euler.y);
+            const sin = Math.sin(euler.y);
+            const worldToMap = (worldPos) => {
+                if (playerCentered) {
+                    let dx = worldPos.x - camera.position.x;
+                    let dz = worldPos.z - camera.position.z;
+                    if (rotate) {
+                        const rx = dx * cos - dz * sin;
+                        const rz = dx * sin + dz * cos;
+                        dx = rx;
+                        dz = rz;
+                    }
+                    return { x: canvasWidth / 2 + dx * scale, y: canvasHeight / 2 + dz * scale };
+                }
+                return {
+                    x: mapOffsetX + ((worldPos.x - worldOffsetX) * scale),
+                    y: mapOffsetY + ((worldPos.z - worldOffsetZ) * scale)
+                };
+            };
+            const cellCenter = (r, c) => new THREE.Vector3(c * cellSize + worldOffsetX + cellSize / 2, 0, r * cellSize + worldOffsetZ + cellSize / 2);
+            const drawCell = (r, c, color) => {
+                const center = cellCenter(r, c);
+                const half = cellSize / 2;
+                const corners = [
+                    worldToMap(new THREE.Vector3(center.x - half, 0, center.z - half)),
+                    worldToMap(new THREE.Vector3(center.x + half, 0, center.z - half)),
+                    worldToMap(new THREE.Vector3(center.x + half, 0, center.z + half)),
+                    worldToMap(new THREE.Vector3(center.x - half, 0, center.z + half))
+                ];
+                minimapCtx.fillStyle = color;
+                minimapCtx.beginPath();
+                minimapCtx.moveTo(corners[0].x, corners[0].y);
+                for (let i = 1; i < corners.length; i++) minimapCtx.lineTo(corners[i].x, corners[i].y);
+                minimapCtx.closePath();
+                minimapCtx.fill();
+            };
+            const drawDot = (position, color, radius = 4, label = '') => {
+                const point = worldToMap(position);
+                minimapCtx.fillStyle = color;
+                minimapCtx.beginPath();
+                minimapCtx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+                minimapCtx.fill();
+                if (label) {
+                    minimapCtx.fillStyle = '#000';
+                    minimapCtx.font = 'bold 10px sans-serif';
+                    minimapCtx.textAlign = 'center';
+                    minimapCtx.textBaseline = 'middle';
+                    minimapCtx.fillText(label, point.x, point.y);
+                }
+            };
+
+            minimapCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+            minimapCtx.fillStyle = 'rgba(0, 0, 0, 0.72)';
+            minimapCtx.fillRect(0, 0, canvasWidth, canvasHeight);
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    drawCell(r, c, custom.grid[r][c] === 1 ? '#ff00f5' : '#123cff');
+                }
+            }
+            if (scene.userData.endPos) drawDot(scene.userData.endPos, '#ffea00', 5, 'F');
+            landmarks.forEach(landmark => drawDot(landmark.position, landmark.userData.isFound ? '#00ff00' : '#ffffff', 4, String(landmark.userData.number)));
+            npcs.forEach(npc => drawDot(npc.position, '#00e5ff', 3));
+            turrets.forEach(turret => drawDot(turret.position, '#ff4f9f', 4, 'T'));
+
+            const playerMapPos = worldToMap(camera.position);
+            const angle = rotate ? 0 : -euler.y;
+            minimapCtx.save();
+            minimapCtx.translate(playerMapPos.x, playerMapPos.y);
+            minimapCtx.rotate(angle);
+            minimapCtx.fillStyle = '#76ff03';
+            minimapCtx.beginPath();
+            minimapCtx.moveTo(0, -7);
+            minimapCtx.lineTo(6, 5);
+            minimapCtx.lineTo(0, 2);
+            minimapCtx.lineTo(-6, 5);
+            minimapCtx.closePath();
+            minimapCtx.fill();
+            minimapCtx.restore();
+        }
+
         function drawMinimap() {
+            if (scene.userData.customLevel) {
+                drawCustomMinimap();
+                return;
+            }
             if (!minimapCtx || !scene.userData.mazeCols) return;
             const rows = scene.userData.mazeRows;
             const cols = scene.userData.mazeCols;
