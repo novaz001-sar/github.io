@@ -1404,55 +1404,82 @@ if (isTimerRunning) {
             if (!scene || height < 0.6) return;
             const lengthAxis = width >= depth ? 'x' : 'z';
             const length = lengthAxis === 'x' ? width : depth;
-            if (length < 2.5) return;
+            if (length < 8 || height < 2.2) return;
 
-            const sideFaces = lengthAxis === 'x'
-                ? [
-                    { axis: 'z', sign: 1, color: WALL_DIRECTION_COLORS.south },
-                    { axis: 'z', sign: -1, color: WALL_DIRECTION_COLORS.north }
-                ]
-                : [
-                    { axis: 'x', sign: 1, color: WALL_DIRECTION_COLORS.east },
-                    { axis: 'x', sign: -1, color: WALL_DIRECTION_COLORS.west }
-                ];
-            const gemCount = Math.max(1, Math.min(4, Math.floor(length / 7)));
+            const compactWall = width <= 8 && depth <= 8;
+            const stableHash = Math.abs(Math.floor(x * 31 + z * 17 + width * 13 + depth * 7));
+            if (compactWall && stableHash % 10 !== 0) return;
+
+            const gemColorHex = width > depth * 1.2
+                ? (z >= 0 ? WALL_DIRECTION_COLORS.south : WALL_DIRECTION_COLORS.north)
+                : depth > width * 1.2
+                    ? (x >= 0 ? WALL_DIRECTION_COLORS.east : WALL_DIRECTION_COLORS.west)
+                    : WALL_DIRECTION_COLORS.top;
+            const gemCount = length >= 44 ? 2 : 1;
             const gemGroup = new THREE.Group();
-            const gemGeometry = new THREE.OctahedronGeometry(0.22, 0);
+            const crystalGeometry = new THREE.OctahedronGeometry(0.26, 1);
+            const haloGeometry = new THREE.SphereGeometry(0.42, 16, 8);
+            const ringGeometry = new THREE.TorusGeometry(0.34, 0.018, 8, 32);
             let gemIndex = 0;
 
-            sideFaces.forEach(face => {
-                for (let i = 0; i < gemCount; i++) {
-                    const offset = -length / 2 + ((i + 1) * length / (gemCount + 1));
-                    const gemColor = new THREE.Color(face.color);
-                    const gemMaterial = new THREE.MeshStandardMaterial({
-                        color: gemColor,
-                        emissive: gemColor,
-                        emissiveIntensity: 1.25,
-                        metalness: 0.72,
-                        roughness: 0.08,
-                        transparent: true,
-                        opacity: 0.92
-                    });
-                    const gem = new THREE.Mesh(gemGeometry, gemMaterial);
-                    gem.position.set(
-                        lengthAxis === 'x' ? x + offset : x + face.sign * (width / 2 + 0.08),
-                        y + Math.min(height * 0.24, 1.1),
-                        lengthAxis === 'x' ? z + face.sign * (depth / 2 + 0.08) : z + offset
-                    );
-                    gem.rotation.set(Math.PI / 4, Math.PI / 4, 0);
-                    gem.castShadow = true;
-                    gem.userData.baseY = gem.position.y;
-                    gem.userData.phase = gemIndex * 0.9;
-                    gemGroup.add(gem);
-                    gemIndex++;
-                }
-            });
+            for (let i = 0; i < gemCount; i++) {
+                const offset = gemCount === 1 ? 0 : -length / 4 + i * (length / 2);
+                const gemColor = new THREE.Color(gemColorHex);
+                const crystalMaterial = new THREE.MeshStandardMaterial({
+                    color: gemColor,
+                    emissive: gemColor,
+                    emissiveIntensity: 1.45,
+                    metalness: 0.62,
+                    roughness: 0.05,
+                    transparent: true,
+                    opacity: 0.96
+                });
+                const haloMaterial = new THREE.MeshBasicMaterial({
+                    color: gemColor,
+                    transparent: true,
+                    opacity: 0.16,
+                    depthWrite: false
+                });
+                const ringMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xffffff,
+                    emissive: gemColor,
+                    emissiveIntensity: 0.5,
+                    metalness: 0.95,
+                    roughness: 0.2
+                });
+                const lamp = new THREE.Group();
+                const crystal = new THREE.Mesh(crystalGeometry, crystalMaterial);
+                const halo = new THREE.Mesh(haloGeometry, haloMaterial);
+                const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                ring.rotation.x = Math.PI / 2;
+                crystal.castShadow = true;
+                lamp.add(halo, crystal, ring);
+                lamp.position.set(
+                    lengthAxis === 'x' ? x + offset : x,
+                    y + height / 2 + 0.78,
+                    lengthAxis === 'x' ? z : z + offset
+                );
+                lamp.userData.baseY = lamp.position.y;
+                lamp.userData.phase = gemIndex * 1.1 + stableHash * 0.01;
+                gemGroup.add(lamp);
+
+                const light = new THREE.PointLight(gemColorHex, 0.45, 5.5);
+                light.position.copy(lamp.position);
+                light.userData.followLamp = lamp;
+                gemGroup.add(light);
+                gemIndex++;
+            }
 
             gemGroup.userData.animation = (time) => {
-                gemGroup.children.forEach((gem, index) => {
-                    gem.position.y = gem.userData.baseY + Math.sin(time * 1.6 + gem.userData.phase) * 0.12;
-                    gem.rotation.y = time * 0.8 + index;
-                    gem.rotation.x = Math.PI / 4 + Math.sin(time * 1.2 + index) * 0.15;
+                gemGroup.children.forEach((item, index) => {
+                    if (item.userData.followLamp) {
+                        item.position.copy(item.userData.followLamp.position);
+                        return;
+                    }
+                    if (!item.userData || typeof item.userData.baseY !== 'number') return;
+                    item.position.y = item.userData.baseY + Math.sin(time * 1.3 + item.userData.phase) * 0.16;
+                    item.rotation.y = time * 0.65 + index;
+                    item.rotation.x = Math.sin(time * 0.9 + index) * 0.12;
                 });
             };
             scene.add(gemGroup);
@@ -1520,7 +1547,33 @@ if (isTimerRunning) {
             return balloonGroup;
         }
 
-        function createCapsule(r, h, c) { const g = new THREE.Group(); const m = new THREE.MeshStandardMaterial({ color: c }); const ch = h - (r * 2); const cg = new THREE.CylinderGeometry(r, r, ch, 32); const cyl = new THREE.Mesh(cg, m); cyl.castShadow = true; cyl.receiveShadow = true; g.add(cyl); const sg = new THREE.SphereGeometry(r, 32, 16); const ts = new THREE.Mesh(sg, m); ts.position.y = ch / 2; ts.castShadow = true; ts.receiveShadow = true; g.add(ts); const bs = new THREE.Mesh(sg, m); bs.position.y = -ch / 2; bs.castShadow = true; bs.receiveShadow = true; g.add(bs); g.velocity = new THREE.Vector3(); return g; }
+        function createCapsule(r, h, c) {
+            const g = new THREE.Group();
+            const m = new THREE.MeshStandardMaterial({ color: c });
+            const ch = h - (r * 2);
+            const cg = new THREE.CylinderGeometry(r, r, ch, 32);
+            const cyl = new THREE.Mesh(cg, m);
+            cyl.castShadow = true;
+            cyl.receiveShadow = true;
+            g.add(cyl);
+            const sg = new THREE.SphereGeometry(r, 32, 16);
+            const ts = new THREE.Mesh(sg, m);
+            ts.position.y = ch / 2;
+            ts.castShadow = true;
+            ts.receiveShadow = true;
+            g.add(ts);
+            const bs = new THREE.Mesh(sg, m);
+            bs.position.y = -ch / 2;
+            bs.castShadow = true;
+            bs.receiveShadow = true;
+            g.add(bs);
+            g.velocity = new THREE.Vector3();
+            g.userData.npcRadius = r;
+            g.userData.npcHeight = h;
+            g.userData.stuckTimer = 0;
+            g.userData.lastPosition = null;
+            return g;
+        }
         function createCircularTarget() {
             const g = new THREE.Group();
             g.name = "warmup_target";
@@ -2872,7 +2925,125 @@ function setupStage28_Survival1() { setupSurvivalArena({ size: 36, targetTime: 3
             }
 
             if (!hasPlayerMoved && moveDirection.lengthSq() > 0) { hasPlayerMoved = true; if (currentStage >= 16 && currentStage <= 26) { minimapContainer.style.display = 'none'; } } if (!canPlayerMove) return; const wantsToCrouch = (keys['ShiftLeft'] || keys['ShiftRight']); if (wantsToCrouch) { if (!isCrouching && playerOnFloor) { camera.position.y -= (playerHeight - playerCrouchHeight); } isCrouching = true; } else { if (isCrouching) { const upRaycaster = new THREE.Raycaster(camera.position, new THREE.Vector3(0, 1, 0), 0, playerHeight - playerCrouchHeight + 0.1); const ceilingIntersections = upRaycaster.intersectObjects(collidables); if (ceilingIntersections.length === 0) { camera.position.y += (playerHeight - playerCrouchHeight); isCrouching = false; } } } const speed = (isCrouching ? crouchSpeed : moveSpeed); if (moveDirection.lengthSq() > 0) { moveDirection.normalize(); const worldMoveDirection = moveDirection.clone().applyQuaternion(camera.quaternion); camera.position.x += worldMoveDirection.x * speed * deltaTime; camera.position.z += worldMoveDirection.z * speed * deltaTime; } const currentHeight = isCrouching ? playerCrouchHeight : playerHeight; const downRaycaster = new THREE.Raycaster(camera.position, new THREE.Vector3(0, -1, 0), 0, currentHeight + 0.2); const groundIntersections = downRaycaster.intersectObjects([...collidables, ...stageObjects.filter(o => o.geometry && o.geometry.type === 'PlaneGeometry')]); playerOnFloor = groundIntersections.length > 0; if (playerOnFloor) { const groundY = groundIntersections[0].point.y; if (playerVelocity.y <= 0) { playerVelocity.y = 0; camera.position.y = groundY + currentHeight; } } else { playerVelocity.y -= gravity * deltaTime; } if (keys['Space'] && playerOnFloor) { playerVelocity.y = jumpForce; playerOnFloor = false; } camera.position.y += playerVelocity.y * deltaTime; const playerBox = new THREE.Box3().setFromCenterAndSize(camera.position, new THREE.Vector3(playerRadius*2, currentHeight, playerRadius*2)); playerBox.min.y = camera.position.y - currentHeight; playerBox.max.y = camera.position.y; collidables.forEach(collidable => { const collidableBox = new THREE.Box3().setFromObject(collidable); if (playerBox.intersectsBox(collidableBox)) { const center = new THREE.Vector3(); playerBox.getCenter(center); const collidableCenter = new THREE.Vector3(); collidableBox.getCenter(collidableCenter); const overlap = new THREE.Vector3().subVectors(center, collidableCenter); const halfSizePlayer = new THREE.Vector3(); playerBox.getSize(halfSizePlayer).multiplyScalar(0.5); const halfSizeCollidable = new THREE.Vector3(); collidableBox.getSize(halfSizeCollidable).multiplyScalar(0.5); const penetration = new THREE.Vector3((halfSizePlayer.x + halfSizeCollidable.x) - Math.abs(overlap.x), (halfSizePlayer.y + halfSizeCollidable.y) - Math.abs(overlap.y), (halfSizePlayer.z + halfSizeCollidable.z) - Math.abs(overlap.z)); if (penetration.x < penetration.z && penetration.x < penetration.y) { camera.position.x += penetration.x * Math.sign(overlap.x); } else if (penetration.z < penetration.y) { camera.position.z += penetration.z * Math.sign(overlap.z); } else { if (playerVelocity.y > 0 && overlap.y < 0) { playerVelocity.y = 0; } camera.position.y += penetration.y * Math.sign(overlap.y); } } }); }
-        function updateNPC(npc, deltaTime) { const fleeVector = new THREE.Vector3().subVectors(npc.position, camera.position); fleeVector.y = 0; fleeVector.normalize(); const avoidanceVector = new THREE.Vector3(); const feelerLength = 2.0; let npcDirection = npc.velocity.clone().normalize(); if(npcDirection.lengthSq() === 0) { npc.getWorldDirection(npcDirection); npcDirection.y = 0; npcDirection.normalize(); } const wallRaycaster = new THREE.Raycaster(npc.position, npcDirection); const intersections = wallRaycaster.intersectObjects(collidables); if (intersections.length > 0 && intersections[0].distance < feelerLength) { const wallNormal = intersections[0].face.normal.clone(); avoidanceVector.copy(npcDirection).reflect(wallNormal).multiplyScalar(1.5); } let steeringDirection = fleeVector.add(avoidanceVector); if (steeringDirection.lengthSq() === 0) { steeringDirection.set(Math.random() - 0.5, 0, Math.random() - 0.5); } steeringDirection.normalize(); if (Math.random() > 0.98) { const randomAngle = (Math.random() - 0.5) * Math.PI; steeringDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), randomAngle); } npc.velocity.lerp(steeringDirection, 0.05); const moveStep = npc.velocity.clone().normalize().multiplyScalar(moveSpeed * 0.8 * deltaTime); const nextPos = npc.position.clone().add(moveStep); const moveDistance = moveStep.length(); const collisionRaycaster = new THREE.Raycaster(npc.position, moveStep.clone().normalize()); const collisionIntersections = collisionRaycaster.intersectObjects(collidables); if (collisionIntersections.length === 0 || collisionIntersections[0].distance > moveDistance + 1.5) { npc.position.copy(nextPos); } else { const wallNormal = collisionIntersections[0].face.normal.clone(); npc.velocity.reflect(wallNormal); } npc.position.y = 0.9; }
+        function canPlaceNPCAt(npc, position) {
+            const radius = npc.userData.npcRadius || 0.45;
+            const height = npc.userData.npcHeight || 1.8;
+            const npcBox = new THREE.Box3().setFromCenterAndSize(
+                position,
+                new THREE.Vector3(radius * 2.1, height * 0.92, radius * 2.1)
+            );
+            return !collidables.some(collidable => {
+                if (!collidable || collidable.visible === false) return false;
+                const collidableBox = new THREE.Box3().setFromObject(collidable);
+                return npcBox.intersectsBox(collidableBox);
+            });
+        }
+
+        function getNPCClearance(position, direction, maxDistance = 5) {
+            if (direction.lengthSq() === 0) return 0;
+            const ray = new THREE.Raycaster(position, direction.clone().normalize(), 0, maxDistance);
+            const hits = ray.intersectObjects(collidables, true);
+            return hits.length ? hits[0].distance : maxDistance;
+        }
+
+        function getBestNPCDirection(npc, preferredDirection) {
+            const preferred = preferredDirection.clone();
+            preferred.y = 0;
+            if (preferred.lengthSq() < 0.001) {
+                preferred.set(Math.random() - 0.5, 0, Math.random() - 0.5);
+            }
+            preferred.normalize();
+
+            const currentDistance = new THREE.Vector2(npc.position.x, npc.position.z).distanceTo(new THREE.Vector2(camera.position.x, camera.position.z));
+            let bestDirection = preferred.clone();
+            let bestScore = -Infinity;
+            const sampleCount = 16;
+
+            for (let i = 0; i < sampleCount; i++) {
+                const angle = (i / sampleCount) * Math.PI * 2;
+                const direction = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+                const clearance = getNPCClearance(npc.position, direction, 5);
+                const future = npc.position.clone().add(direction.clone().multiplyScalar(Math.min(2.5, clearance)));
+                const futureDistance = new THREE.Vector2(future.x, future.z).distanceTo(new THREE.Vector2(camera.position.x, camera.position.z));
+                let score = direction.dot(preferred) * 1.25;
+                score += Math.min(clearance, 5) * 0.42;
+                score += (futureDistance - currentDistance) * 0.72;
+                if (clearance < 1.2) score -= 5;
+                if (!canPlaceNPCAt(npc, future)) score -= 4;
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestDirection = direction;
+                }
+            }
+            return bestDirection.normalize();
+        }
+
+        function tryMoveNPC(npc, moveStep) {
+            if (moveStep.lengthSq() === 0) return true;
+            const nextPos = npc.position.clone().add(moveStep);
+            if (canPlaceNPCAt(npc, nextPos)) {
+                npc.position.copy(nextPos);
+                return true;
+            }
+
+            const steps = Math.abs(moveStep.x) >= Math.abs(moveStep.z)
+                ? [new THREE.Vector3(moveStep.x, 0, 0), new THREE.Vector3(0, 0, moveStep.z)]
+                : [new THREE.Vector3(0, 0, moveStep.z), new THREE.Vector3(moveStep.x, 0, 0)];
+
+            for (const step of steps) {
+                if (step.lengthSq() === 0) continue;
+                const slidePos = npc.position.clone().add(step);
+                if (canPlaceNPCAt(npc, slidePos)) {
+                    npc.position.copy(slidePos);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function updateNPC(npc, deltaTime) {
+            if (!npc.userData.lastPosition) {
+                npc.userData.lastPosition = npc.position.clone();
+            }
+
+            const fleeDirection = new THREE.Vector3().subVectors(npc.position, camera.position);
+            fleeDirection.y = 0;
+            const bestDirection = getBestNPCDirection(npc, fleeDirection);
+            const npcSpeed = moveSpeed * 0.95;
+            const desiredVelocity = bestDirection.clone().multiplyScalar(npcSpeed);
+            npc.velocity.lerp(desiredVelocity, 0.18);
+            if (npc.velocity.lengthSq() < 0.05) {
+                npc.velocity.copy(desiredVelocity);
+            }
+
+            const beforeMove = npc.position.clone();
+            const moveStep = npc.velocity.clone().multiplyScalar(deltaTime);
+            const moved = tryMoveNPC(npc, moveStep);
+            if (!moved) {
+                const recoveryDirection = getBestNPCDirection(npc, npc.velocity.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2));
+                npc.velocity.copy(recoveryDirection.multiplyScalar(npcSpeed));
+                tryMoveNPC(npc, npc.velocity.clone().multiplyScalar(deltaTime * 1.8));
+            }
+
+            const actualMove = new THREE.Vector2(npc.position.x - beforeMove.x, npc.position.z - beforeMove.z).length();
+            const expectedMove = Math.max(0.01, moveStep.length());
+            npc.userData.stuckTimer = actualMove < expectedMove * 0.22 ? (npc.userData.stuckTimer || 0) + deltaTime : 0;
+            if (npc.userData.stuckTimer > 0.45) {
+                const escapeDirection = getBestNPCDirection(npc, new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5));
+                const escapePos = npc.position.clone().add(escapeDirection.clone().multiplyScalar(0.9));
+                if (canPlaceNPCAt(npc, escapePos)) {
+                    npc.position.copy(escapePos);
+                }
+                npc.velocity.copy(escapeDirection.multiplyScalar(npcSpeed));
+                npc.userData.stuckTimer = 0;
+            }
+
+            npc.position.y = 0.9;
+            if (npc.velocity.lengthSq() > 0.05) {
+                npc.rotation.y = Math.atan2(npc.velocity.x, npc.velocity.z);
+            }
+            npc.userData.lastPosition.copy(npc.position);
+        }
         
         function updateKeyDisplay() {
             if (keyW) keyW.classList.toggle('key-active', !!keys['KeyW']);
