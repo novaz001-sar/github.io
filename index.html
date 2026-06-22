@@ -138,7 +138,7 @@
         <label class="editor-row editor-row-stacked">
             <span id="editor-wall-mode-label">墙体材质模式 / Wall Material Mode</span>
             <select id="editor-wall-material-mode">
-                <option value="palette">默认方向配色 / Direction Palette</option>
+                <option value="palette">配色模式（默认方向配色） / Color Mode (Direction Palette)</option>
                 <option value="color">单色配色 / Solid Color</option>
                 <option value="image">本地图片 / Local Image</option>
             </select>
@@ -159,7 +159,7 @@
         <label class="editor-row editor-row-stacked">
             <span id="editor-floor-mode-label">地面材质模式 / Floor Material Mode</span>
             <select id="editor-floor-material-mode">
-                <option value="color">配色 / Color</option>
+                <option value="color">配色模式 / Color Mode</option>
                 <option value="image">本地图片 / Local Image</option>
             </select>
         </label>
@@ -228,6 +228,14 @@
                 <span id="menu-language-label">语言 / Language</span>
                 <button type="button" class="language-option" data-language="zh">中文</button>
                 <button type="button" class="language-option" data-language="en">English</button>
+            </div>
+            <div id="movement-settings" class="menu-settings-panel">
+                <div id="movement-settings-title" class="settings-title">移动设置 / Movement</div>
+                <label class="settings-row settings-row-stacked">
+                    <span id="movement-speed-label">玩家移动速度 / Player Speed</span>
+                    <input type="range" id="movement-speed" min="0.5" max="2" step="0.1" value="1">
+                    <span id="movement-speed-value">1.0x</span>
+                </label>
             </div>
             <button class="menu-button" id="resume-button">继续训练<br>Resume</button>
             <button class="menu-button" id="restart-button">重新开始<br>Restart</button>

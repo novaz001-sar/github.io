@@ -10,6 +10,9 @@
         const crouchSpeed = 2.5;
         const keys = {};
         let languageMode = localStorage.getItem('languageMode') || 'zh';
+        const playerMovementSettings = {
+            speed: parseFloat(localStorage.getItem('playerMovementSpeed') || '1')
+        };
         const warmupTargetSettings = {
             moving: localStorage.getItem('warmupTargetMoving') === 'true',
             speed: parseFloat(localStorage.getItem('warmupTargetSpeed') || '1.5')
@@ -19,15 +22,21 @@
         const DEFAULT_FLOOR_COLOR = '#5cff72';
         const WALL_MATERIAL_MODES = { PALETTE: 'palette', COLOR: 'color', IMAGE: 'image' };
         const FLOOR_MATERIAL_MODES = { COLOR: 'color', IMAGE: 'image' };
+        const EDITOR_MATERIAL_MODE_VERSION = '2';
+        if (localStorage.getItem('editorMaterialModeVersion') !== EDITOR_MATERIAL_MODE_VERSION) {
+            localStorage.removeItem('editorWallMode');
+            localStorage.removeItem('editorFloorMode');
+            localStorage.setItem('editorMaterialModeVersion', EDITOR_MATERIAL_MODE_VERSION);
+        }
         const storedEditorWallMode = localStorage.getItem('editorWallMode');
         const storedEditorFloorMode = localStorage.getItem('editorFloorMode');
         const editorTextureSettings = {
             wallMode: ['palette', 'color', 'image'].includes(storedEditorWallMode)
                 ? storedEditorWallMode
-                : (localStorage.getItem('editorWallImage') ? WALL_MATERIAL_MODES.IMAGE : WALL_MATERIAL_MODES.PALETTE),
+                : WALL_MATERIAL_MODES.PALETTE,
             floorMode: ['color', 'image'].includes(storedEditorFloorMode)
                 ? storedEditorFloorMode
-                : (localStorage.getItem('editorFloorImage') ? FLOOR_MATERIAL_MODES.IMAGE : FLOOR_MATERIAL_MODES.COLOR),
+                : FLOOR_MATERIAL_MODES.COLOR,
             wallImage: localStorage.getItem('editorWallImage') || '',
             floorImage: localStorage.getItem('editorFloorImage') || '',
             wallColor: localStorage.getItem('editorWallColor') || DEFAULT_WALL_COLOR,
@@ -114,6 +123,7 @@
         let menuOverlay, levelSelectMenu, modeSelectionScreen, playerInfoElement;
         let keyDisplay, keyW, keyA, keyS, keyD, keySpace, keyShift;
         let narrationBox, resultsOverlay, trainingChoiceOverlay, trainingCommandElement, resetConfirmOverlay;
+        let movementSpeedInput, movementSpeedValue;
         let warmupConfirmOverlay; 
         let warmupTargetSettingsPanel, warmupTargetMovingInput, warmupTargetSpeedInput, warmupTargetSpeedValue;
         let editorPanel, editorLevelSelect, editorWallInput, editorFloorInput, editorStatusElement;
@@ -229,6 +239,8 @@
             trainingChoiceOverlay = document.getElementById('training-choice-overlay');
             trainingCommandElement = document.getElementById('training-command');
             resetConfirmOverlay = document.getElementById('reset-confirm-overlay');
+            movementSpeedInput = document.getElementById('movement-speed');
+            movementSpeedValue = document.getElementById('movement-speed-value');
             warmupConfirmOverlay = document.getElementById('warmup-confirm-overlay');
             warmupTimerDisplayElement = document.getElementById('warmup-timer-display');
             warmupTargetSettingsPanel = document.getElementById('warmup-target-settings');
@@ -271,6 +283,7 @@
             setupResetConfirmation();
             setupWarmupConfirmation(); 
             setupLanguageControls();
+            setupMovementSettings();
             setupWarmupTargetSettings();
             setupEditorControls();
             applyLanguage();
@@ -316,6 +329,8 @@
             { selector: '#warmup-button', zh: '返回热身', en: 'Warm-up' },
             { selector: '#main-menu-button', zh: '返回主菜单', en: 'Main Menu' },
             { selector: '#reset-game-button', zh: '重置档案', en: 'Reset Profile' },
+            { selector: '#movement-settings-title', zh: '移动设置', en: 'Movement' },
+            { selector: '#movement-speed-label', zh: '玩家移动速度', en: 'Player Speed' },
             { selector: '#warmup-target-title', zh: '热身靶子设置', en: 'Warm-up Target' },
             { selector: '#warmup-target-moving-label', zh: '靶子移动', en: 'Moving target' },
             { selector: '#warmup-target-speed-label', zh: '移动速度', en: 'Speed' },
@@ -389,6 +404,7 @@
             document.querySelectorAll('.language-option').forEach(button => {
                 button.classList.toggle('active', button.dataset.language === languageMode);
             });
+            updateMovementSettingsUI();
             updateWarmupTargetSettingsUI();
             updateEditorStatus();
             updateEditorMaterialUI();
@@ -419,6 +435,28 @@
                 parts.push(`<div style="${continueMatch[1]}">${continueMatch[2]}</div>`);
             }
             return parts.join('<br><br>');
+        }
+
+        function clampPlayerMovementSpeed(value) {
+            return Math.max(0.5, Math.min(2, parseFloat(value) || 1));
+        }
+
+        function setupMovementSettings() {
+            playerMovementSettings.speed = clampPlayerMovementSpeed(playerMovementSettings.speed);
+            if (!movementSpeedInput) return;
+            movementSpeedInput.value = String(playerMovementSettings.speed);
+            movementSpeedInput.addEventListener('input', () => {
+                playerMovementSettings.speed = clampPlayerMovementSpeed(movementSpeedInput.value);
+                localStorage.setItem('playerMovementSpeed', String(playerMovementSettings.speed));
+                updateMovementSettingsUI();
+            });
+            updateMovementSettingsUI();
+        }
+
+        function updateMovementSettingsUI() {
+            playerMovementSettings.speed = clampPlayerMovementSpeed(playerMovementSettings.speed);
+            if (movementSpeedInput) movementSpeedInput.value = String(playerMovementSettings.speed);
+            if (movementSpeedValue) movementSpeedValue.textContent = `${Number(playerMovementSettings.speed).toFixed(1)}x`;
         }
 
         function setupWarmupTargetSettings() {
@@ -585,7 +623,7 @@
         function updateEditorMaterialModeOptions() {
             if (editorWallModeSelect) {
                 const wallOptions = [
-                    { value: WALL_MATERIAL_MODES.PALETTE, zh: '默认方向配色', en: 'Direction Palette' },
+                    { value: WALL_MATERIAL_MODES.PALETTE, zh: '配色模式（默认方向配色）', en: 'Color Mode (Direction Palette)' },
                     { value: WALL_MATERIAL_MODES.COLOR, zh: '单色配色', en: 'Solid Color' },
                     { value: WALL_MATERIAL_MODES.IMAGE, zh: '本地图片', en: 'Local Image' }
                 ];
@@ -596,7 +634,7 @@
             }
             if (editorFloorModeSelect) {
                 const floorOptions = [
-                    { value: FLOOR_MATERIAL_MODES.COLOR, zh: '配色', en: 'Color' },
+                    { value: FLOOR_MATERIAL_MODES.COLOR, zh: '配色模式', en: 'Color Mode' },
                     { value: FLOOR_MATERIAL_MODES.IMAGE, zh: '本地图片', en: 'Local Image' }
                 ];
                 floorOptions.forEach(optionData => {
@@ -751,6 +789,12 @@
             if (renderer && renderer.capabilities) {
                 texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
             }
+            texture.minFilter = THREE.LinearMipmapLinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+            texture.generateMipmaps = true;
+            if (THREE.SRGBColorSpace) {
+                texture.colorSpace = THREE.SRGBColorSpace;
+            }
             if (THREE.sRGBEncoding) {
                 texture.encoding = THREE.sRGBEncoding;
             }
@@ -791,10 +835,10 @@
             const customReady = !!localStorage.getItem('customLevelData');
             const wallStatus = wallMode === WALL_MATERIAL_MODES.IMAGE
                 ? (wallReady ? t('墙体：本地图片', 'Wall: local image') : t('墙体：等待上传图片', 'Wall: waiting for image'))
-                : (wallMode === WALL_MATERIAL_MODES.COLOR ? t('墙体：单色配色', 'Wall: solid color') : t('墙体：默认方向配色', 'Wall: direction palette'));
+                : (wallMode === WALL_MATERIAL_MODES.COLOR ? t('墙体：单色配色', 'Wall: solid color') : t('墙体：配色模式（默认方向配色）', 'Wall: color mode (direction palette)'));
             const floorStatus = floorMode === FLOOR_MATERIAL_MODES.IMAGE
                 ? (floorReady ? t('地面：本地图片', 'Floor: local image') : t('地面：等待上传图片', 'Floor: waiting for image'))
-                : t('地面：配色', 'Floor: color');
+                : t('地面：配色模式', 'Floor: color mode');
             editorStatusElement.textContent = customReady
                 ? `${wallStatus} · ${floorStatus} · ${t('自定义关卡已保存', 'Custom level saved')}`
                 : `${wallStatus} · ${floorStatus}`;
@@ -2274,16 +2318,25 @@ if (isTimerRunning) {
             bottom: 0x7c2cff
         };
 
+        function createEditorImageMaterial(texture, kind) {
+            const isFloor = kind === 'floor';
+            return new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                map: texture,
+                emissive: 0xffffff,
+                emissiveMap: texture,
+                emissiveIntensity: isFloor ? 0.035 : 0.055,
+                metalness: isFloor ? 0.28 : 0.34,
+                roughness: isFloor ? 0.32 : 0.24,
+                envMapIntensity: 1.15,
+                side: isFloor ? THREE.DoubleSide : THREE.FrontSide
+            });
+        }
+
         function createWallFaceMaterial(directionColor, sourceColor = 0xaaaaaa) {
             const wallMode = getEditorWallMode();
             if (wallMode === WALL_MATERIAL_MODES.IMAGE && editorWallTexture) {
-                return new THREE.MeshStandardMaterial({
-                    color: 0xffffff,
-                    map: editorWallTexture,
-                    emissive: 0x000000,
-                    metalness: 0.92,
-                    roughness: 0.2
-                });
+                return createEditorImageMaterial(editorWallTexture, 'wall');
             }
             const selectedWallColor = wallMode === WALL_MATERIAL_MODES.COLOR
                 ? (editorTextureSettings.wallColor || DEFAULT_WALL_COLOR)
@@ -2419,13 +2472,7 @@ if (isTimerRunning) {
             const g = new THREE.PlaneGeometry(width, depth);
             const floorMode = getEditorFloorMode();
             const m = (floorMode === FLOOR_MATERIAL_MODES.IMAGE && editorFloorTexture)
-                ? new THREE.MeshStandardMaterial({
-                    color: 0xffffff,
-                    map: editorFloorTexture,
-                    side: THREE.DoubleSide,
-                    metalness: 0.58,
-                    roughness: 0.26
-                })
+                ? createEditorImageMaterial(editorFloorTexture, 'floor')
                 : new THREE.MeshStandardMaterial({
                     color: editorTextureSettings.floorColor || DEFAULT_FLOOR_COLOR,
                     emissive: 0x103d18,
@@ -3944,7 +3991,7 @@ function setupStage28_Survival1() { setupSurvivalArena({ size: 36, targetTime: 3
                 if (keys['KeyD']) moveDirection.x = 1;
             }
 
-            if (!hasPlayerMoved && moveDirection.lengthSq() > 0) { hasPlayerMoved = true; if (currentStage >= 16 && currentStage <= 26) { minimapContainer.style.display = 'none'; } } if (!canPlayerMove) return; const wantsToCrouch = (keys['ShiftLeft'] || keys['ShiftRight']); if (wantsToCrouch) { if (!isCrouching && playerOnFloor) { camera.position.y -= (playerHeight - playerCrouchHeight); } isCrouching = true; } else { if (isCrouching) { const upRaycaster = new THREE.Raycaster(camera.position, new THREE.Vector3(0, 1, 0), 0, playerHeight - playerCrouchHeight + 0.1); const ceilingIntersections = upRaycaster.intersectObjects(collidables); if (ceilingIntersections.length === 0) { camera.position.y += (playerHeight - playerCrouchHeight); isCrouching = false; } } } const speed = (isCrouching ? crouchSpeed : moveSpeed); if (moveDirection.lengthSq() > 0) { moveDirection.normalize(); const worldMoveDirection = moveDirection.clone().applyQuaternion(camera.quaternion); camera.position.x += worldMoveDirection.x * speed * deltaTime; camera.position.z += worldMoveDirection.z * speed * deltaTime; } const currentHeight = isCrouching ? playerCrouchHeight : playerHeight; const downRaycaster = new THREE.Raycaster(camera.position, new THREE.Vector3(0, -1, 0), 0, currentHeight + 0.2); const groundIntersections = downRaycaster.intersectObjects([...collidables, ...stageObjects.filter(o => o.geometry && o.geometry.type === 'PlaneGeometry')]); playerOnFloor = groundIntersections.length > 0; if (playerOnFloor) { const groundY = groundIntersections[0].point.y; if (playerVelocity.y <= 0) { playerVelocity.y = 0; camera.position.y = groundY + currentHeight; } } else { playerVelocity.y -= gravity * deltaTime; } if (keys['Space'] && playerOnFloor) { playerVelocity.y = jumpForce; playerOnFloor = false; } camera.position.y += playerVelocity.y * deltaTime; const playerBox = new THREE.Box3().setFromCenterAndSize(camera.position, new THREE.Vector3(playerRadius*2, currentHeight, playerRadius*2)); playerBox.min.y = camera.position.y - currentHeight; playerBox.max.y = camera.position.y; collidables.forEach(collidable => { const collidableBox = new THREE.Box3().setFromObject(collidable); if (playerBox.intersectsBox(collidableBox)) { const center = new THREE.Vector3(); playerBox.getCenter(center); const collidableCenter = new THREE.Vector3(); collidableBox.getCenter(collidableCenter); const overlap = new THREE.Vector3().subVectors(center, collidableCenter); const halfSizePlayer = new THREE.Vector3(); playerBox.getSize(halfSizePlayer).multiplyScalar(0.5); const halfSizeCollidable = new THREE.Vector3(); collidableBox.getSize(halfSizeCollidable).multiplyScalar(0.5); const penetration = new THREE.Vector3((halfSizePlayer.x + halfSizeCollidable.x) - Math.abs(overlap.x), (halfSizePlayer.y + halfSizeCollidable.y) - Math.abs(overlap.y), (halfSizePlayer.z + halfSizeCollidable.z) - Math.abs(overlap.z)); if (penetration.x < penetration.z && penetration.x < penetration.y) { camera.position.x += penetration.x * Math.sign(overlap.x); } else if (penetration.z < penetration.y) { camera.position.z += penetration.z * Math.sign(overlap.z); } else { if (playerVelocity.y > 0 && overlap.y < 0) { playerVelocity.y = 0; } camera.position.y += penetration.y * Math.sign(overlap.y); } } }); }
+            if (!hasPlayerMoved && moveDirection.lengthSq() > 0) { hasPlayerMoved = true; if (currentStage >= 16 && currentStage <= 26) { minimapContainer.style.display = 'none'; } } if (!canPlayerMove) return; const wantsToCrouch = (keys['ShiftLeft'] || keys['ShiftRight']); if (wantsToCrouch) { if (!isCrouching && playerOnFloor) { camera.position.y -= (playerHeight - playerCrouchHeight); } isCrouching = true; } else { if (isCrouching) { const upRaycaster = new THREE.Raycaster(camera.position, new THREE.Vector3(0, 1, 0), 0, playerHeight - playerCrouchHeight + 0.1); const ceilingIntersections = upRaycaster.intersectObjects(collidables); if (ceilingIntersections.length === 0) { camera.position.y += (playerHeight - playerCrouchHeight); isCrouching = false; } } } const speed = (isCrouching ? crouchSpeed : moveSpeed) * clampPlayerMovementSpeed(playerMovementSettings.speed); if (moveDirection.lengthSq() > 0) { moveDirection.normalize(); const worldMoveDirection = moveDirection.clone().applyQuaternion(camera.quaternion); camera.position.x += worldMoveDirection.x * speed * deltaTime; camera.position.z += worldMoveDirection.z * speed * deltaTime; } const currentHeight = isCrouching ? playerCrouchHeight : playerHeight; const downRaycaster = new THREE.Raycaster(camera.position, new THREE.Vector3(0, -1, 0), 0, currentHeight + 0.2); const groundIntersections = downRaycaster.intersectObjects([...collidables, ...stageObjects.filter(o => o.geometry && o.geometry.type === 'PlaneGeometry')]); playerOnFloor = groundIntersections.length > 0; if (playerOnFloor) { const groundY = groundIntersections[0].point.y; if (playerVelocity.y <= 0) { playerVelocity.y = 0; camera.position.y = groundY + currentHeight; } } else { playerVelocity.y -= gravity * deltaTime; } if (keys['Space'] && playerOnFloor) { playerVelocity.y = jumpForce; playerOnFloor = false; } camera.position.y += playerVelocity.y * deltaTime; const playerBox = new THREE.Box3().setFromCenterAndSize(camera.position, new THREE.Vector3(playerRadius*2, currentHeight, playerRadius*2)); playerBox.min.y = camera.position.y - currentHeight; playerBox.max.y = camera.position.y; collidables.forEach(collidable => { const collidableBox = new THREE.Box3().setFromObject(collidable); if (playerBox.intersectsBox(collidableBox)) { const center = new THREE.Vector3(); playerBox.getCenter(center); const collidableCenter = new THREE.Vector3(); collidableBox.getCenter(collidableCenter); const overlap = new THREE.Vector3().subVectors(center, collidableCenter); const halfSizePlayer = new THREE.Vector3(); playerBox.getSize(halfSizePlayer).multiplyScalar(0.5); const halfSizeCollidable = new THREE.Vector3(); collidableBox.getSize(halfSizeCollidable).multiplyScalar(0.5); const penetration = new THREE.Vector3((halfSizePlayer.x + halfSizeCollidable.x) - Math.abs(overlap.x), (halfSizePlayer.y + halfSizeCollidable.y) - Math.abs(overlap.y), (halfSizePlayer.z + halfSizeCollidable.z) - Math.abs(overlap.z)); if (penetration.x < penetration.z && penetration.x < penetration.y) { camera.position.x += penetration.x * Math.sign(overlap.x); } else if (penetration.z < penetration.y) { camera.position.z += penetration.z * Math.sign(overlap.z); } else { if (playerVelocity.y > 0 && overlap.y < 0) { playerVelocity.y = 0; } camera.position.y += penetration.y * Math.sign(overlap.y); } } }); }
         function isNPCBlockingCollidable(collidable) {
             if (!collidable || collidable.visible === false) return false;
             let current = collidable;
