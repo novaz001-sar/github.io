@@ -1,11 +1,155 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-  <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="0; url=game16.2.html">
-  <title>游戏重定向</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spatial Cognition Game for Seniors (V21.2 - map updated)</title>
+    <link rel="stylesheet" href="css/game.css">
 </head>
 <body>
-  如果没有自动跳转，请 <a href="game16.2.html">点击这里进入游戏</a>。
+    <!-- Introduction video overlay. When the video finishes playing, it will be hidden automatically -->
+    <video id="intro-video" src="assets/video/intro.mp4" autoplay muted playsinline
+        style="position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:9999;">
+        Your browser does not support the video tag.
+    </video>
+    <script src="js/intro.js"></script>
+    <div id="mode-selection" class="overlay">
+        <h1>选择训练模式 / Select Mode</h1>
+        <button id="campaign-mode-button" class="mode-button">生涯模式<br><span style="font-size:12px;">Campaign Mode</span></button>
+        <button id="free-mode-button" class="mode-button">自由模式<br><span style="font-size:12px;">Free Mode</span></button>
+    </div>
+
+    <div id="profile-creation-overlay" class="overlay" style="display: none; z-index: 14;">
+        <div id="profile-form">
+            <h2>创建您的档案 / Create Your Profile</h2>
+            <input type="text" id="nickname-input" placeholder="请输入您的昵称 / Enter Nickname">
+            <div id="gender-select">
+                <button id="male-button" data-gender="male">我是叔叔 / I am Uncle</button>
+                <button id="female-button" data-gender="female">我是阿姨 / I am Auntie</button>
+            </div>
+            <button id="start-campaign-button">开始训练 / Start Training</button>
+        </div>
+    </div>
+
+    <div id="player-info">
+        <div id="player-name"></div>
+        <div id="player-stars"></div>
+    </div>
+
+    <div id="blocker" class="overlay" style="display: none;">
+        <div id="instructions">
+            <div id="instruction-text"></div>
+            <div id="star-container"></div>
+        </div>
+    </div>
+
+    <div id="results-overlay" class="overlay">
+        <div id="results-content">
+            <h1 id="results-title">能力认证 / Cognitive Mastery</h1>
+            <p id="player-final-title"></p>
+            <div id="podium-container">
+                <div id="podium-2" class="podium-step"></div>
+                <div id="podium-1" class="podium-step"></div>
+                <div id="podium-3" class="podium-step"></div>
+            </div>
+            <p id="encouragement-message"></p>
+            <button id="close-results-button">太棒了！ / Awesome! (Back to Menu)</button>
+        </div>
+    </div>
+
+    <div id="training-choice-overlay" class="overlay" style="display: none; z-index: 16;">
+        <div id="training-choice-box" class="confirm-box">
+            <h2>移动特训 / Movement Special Training</h2>
+            <p style="font-size: 16px; line-height: 1.5;">
+                您想开始带有指令的移动特训吗？<br>
+                <span style="font-size: 14px; color: #ccc;">Would you like to start special training with commands?</span>
+            </p>
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <button id="training-yes" class="menu-button" style="width: 150px;">是 / Yes</button>
+                <button id="training-no" class="menu-button" style="width: 150px; background-color: #777;">否 / No</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="reset-confirm-overlay" class="overlay" style="display: none; z-index: 16;">
+        <div id="reset-confirm-box" class="confirm-box">
+            <h2>重置档案？ / Reset Profile?</h2>
+            <p style="font-size: 16px; line-height: 1.5;">
+                您确定要清除所有训练记录吗？此操作无法撤销。<br>
+                <span style="font-size: 14px; color: #ccc;">Are you sure you want to erase all progress? This action cannot be undone.</span>
+            </p>
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <button id="reset-confirm-yes" class="menu-button" style="width: 150px; background-color: #b22222;">确定 / Confirm</button>
+                <button id="reset-confirm-no" class="menu-button" style="width: 150px;">取消 / Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="warmup-confirm-overlay" class="overlay" style="display: none; z-index: 17;">
+        <div id="warmup-confirm-box" class="confirm-box">
+            <h2>开始训练？ / Start Training?</h2>
+            <p style="font-size: 16px; line-height: 1.5;">
+                热身结束！准备好开始第一项认知训练了吗？<br>
+                <span style="font-size: 14px; color: #ccc;">Warm-up complete! Are you ready to start the first cognitive training?</span>
+            </p>
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <button id="warmup-confirm-yes" class="menu-button" style="width: 150px;">准备好了 / Yes</button>
+                <button id="warmup-confirm-no" class="menu-button" style="width: 150px; background-color: #777;">再等等 / Not Yet</button>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="training-command"></div>
+
+    <!-- MODIFIED: Added inner div for style toggling -->
+    <div id="crosshair"><div></div></div>
+
+    <div id="timer">0.00s</div>
+    <div id="warmup-timer-display"></div>
+    <div id="minimap-container"><canvas id="minimap"></canvas></div>
+    <div id="narration-box"></div>
+
+    <div id="menu-overlay" class="overlay">
+        <div id="menu-content">
+            <button class="menu-button" id="resume-button">继续训练<br>Resume</button>
+            <button class="menu-button" id="restart-button">重新开始<br>Restart</button>
+            <button class="menu-button" id="select-level-button">选择关卡<br>Select Level</button>
+            <div id="level-select-menu"></div>
+            <button class="menu-button" id="warmup-button">返回热身<br>Warm-up</button>
+            <button class="menu-button" id="main-menu-button">返回主菜单<br>Main Menu</button>
+            <button class="menu-button" id="reset-game-button">重置档案<br>Reset Profile</button>
+        </div>
+    </div>
+
+    <div id="npc-counter"></div>
+    <div id="landmark-counter"></div>
+    <div id="generic-counter"></div>
+    <div id="map-uses-counter"></div>
+
+    <div id="key-display">
+        <div class="key-row">
+            <div class="key" id="key-w">W</div>
+        </div>
+        <div class="key-row">
+            <div class="key" id="key-a">A</div>
+            <div class="key" id="key-s">S</div>
+            <div class="key" id="key-d">D</div>
+        </div>
+        <div class="key-row">
+           <div class="key key-long" id="key-space">空格<br>Space</div>
+        </div>
+         <div class="key-row">
+            <div class="key key-long" id="key-shift">Shift</div>
+        </div>
+    </div>
+
+    <div id="player-health-container">
+        <div id="player-health-bar"></div>
+        <div id="player-health-text"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="js/game.js"></script>
 </body>
 </html>
