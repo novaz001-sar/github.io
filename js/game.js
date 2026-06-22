@@ -17,7 +17,17 @@
         const CUSTOM_STAGE_ID = 'custom:local';
         const DEFAULT_WALL_COLOR = '#ff00f5';
         const DEFAULT_FLOOR_COLOR = '#5cff72';
+        const WALL_MATERIAL_MODES = { PALETTE: 'palette', COLOR: 'color', IMAGE: 'image' };
+        const FLOOR_MATERIAL_MODES = { COLOR: 'color', IMAGE: 'image' };
+        const storedEditorWallMode = localStorage.getItem('editorWallMode');
+        const storedEditorFloorMode = localStorage.getItem('editorFloorMode');
         const editorTextureSettings = {
+            wallMode: ['palette', 'color', 'image'].includes(storedEditorWallMode)
+                ? storedEditorWallMode
+                : (localStorage.getItem('editorWallImage') ? WALL_MATERIAL_MODES.IMAGE : WALL_MATERIAL_MODES.PALETTE),
+            floorMode: ['color', 'image'].includes(storedEditorFloorMode)
+                ? storedEditorFloorMode
+                : (localStorage.getItem('editorFloorImage') ? FLOOR_MATERIAL_MODES.IMAGE : FLOOR_MATERIAL_MODES.COLOR),
             wallImage: localStorage.getItem('editorWallImage') || '',
             floorImage: localStorage.getItem('editorFloorImage') || '',
             wallColor: localStorage.getItem('editorWallColor') || DEFAULT_WALL_COLOR,
@@ -107,6 +117,7 @@
         let warmupConfirmOverlay; 
         let warmupTargetSettingsPanel, warmupTargetMovingInput, warmupTargetSpeedInput, warmupTargetSpeedValue;
         let editorPanel, editorLevelSelect, editorWallInput, editorFloorInput, editorStatusElement;
+        let editorWallModeSelect, editorFloorModeSelect;
         let editorWallColorInput, editorFloorColorInput, editorWallSizeInput, editorFloorSizeInput;
         let editorWallSizeValue, editorFloorSizeValue;
         let editorGridCanvas, editorCustomNameInput, editorSaveCustomButton, editorPlayCustomButton;
@@ -226,6 +237,8 @@
             warmupTargetSpeedValue = document.getElementById('warmup-target-speed-value');
             editorPanel = document.getElementById('editor-panel');
             editorLevelSelect = document.getElementById('editor-level-select');
+            editorWallModeSelect = document.getElementById('editor-wall-material-mode');
+            editorFloorModeSelect = document.getElementById('editor-floor-material-mode');
             editorWallInput = document.getElementById('editor-wall-image');
             editorFloorInput = document.getElementById('editor-floor-image');
             editorWallColorInput = document.getElementById('editor-wall-color');
@@ -308,6 +321,8 @@
             { selector: '#warmup-target-speed-label', zh: '移动速度', en: 'Speed' },
             { selector: '#editor-panel-title', zh: '编辑器模式', en: 'Editor Mode' },
             { selector: '#editor-level-label', zh: '关卡', en: 'Level' },
+            { selector: '#editor-wall-mode-label', zh: '墙体材质模式', en: 'Wall Material Mode' },
+            { selector: '#editor-floor-mode-label', zh: '地面材质模式', en: 'Floor Material Mode' },
             { selector: '#editor-wall-label', zh: '墙体图片', en: 'Wall Image' },
             { selector: '#editor-floor-label', zh: '地面图片', en: 'Floor Image' },
             { selector: '#editor-wall-color-label', zh: '墙体配色', en: 'Wall Color' },
@@ -441,6 +456,16 @@
                 localStorage.setItem('editorSelectedStage', String(editorTextureSettings.selectedStage));
                 loadEditorStage(editorTextureSettings.selectedStage);
             });
+            if (editorWallModeSelect) {
+                editorWallModeSelect.addEventListener('change', () => {
+                    setEditorWallMode(editorWallModeSelect.value, true);
+                });
+            }
+            if (editorFloorModeSelect) {
+                editorFloorModeSelect.addEventListener('change', () => {
+                    setEditorFloorMode(editorFloorModeSelect.value, true);
+                });
+            }
             if (editorWallInput) {
                 editorWallInput.addEventListener('change', () => handleEditorImageUpload(editorWallInput, 'wall'));
             }
@@ -450,16 +475,20 @@
             if (editorWallColorInput) {
                 editorWallColorInput.value = editorTextureSettings.wallColor;
                 editorWallColorInput.addEventListener('input', () => {
+                    setEditorWallMode(WALL_MATERIAL_MODES.COLOR, false);
                     editorTextureSettings.wallColor = editorWallColorInput.value || DEFAULT_WALL_COLOR;
                     localStorage.setItem('editorWallColor', editorTextureSettings.wallColor);
+                    updateEditorMaterialUI();
                     loadEditorStage(editorTextureSettings.selectedStage);
                 });
             }
             if (editorFloorColorInput) {
                 editorFloorColorInput.value = editorTextureSettings.floorColor;
                 editorFloorColorInput.addEventListener('input', () => {
+                    setEditorFloorMode(FLOOR_MATERIAL_MODES.COLOR, false);
                     editorTextureSettings.floorColor = editorFloorColorInput.value || DEFAULT_FLOOR_COLOR;
                     localStorage.setItem('editorFloorColor', editorTextureSettings.floorColor);
+                    updateEditorMaterialUI();
                     loadEditorStage(editorTextureSettings.selectedStage);
                 });
             }
@@ -503,24 +532,113 @@
             }
         }
 
+        function normalizeEditorWallMode(mode) {
+            return ['palette', 'color', 'image'].includes(mode) ? mode : WALL_MATERIAL_MODES.PALETTE;
+        }
+
+        function normalizeEditorFloorMode(mode) {
+            return ['color', 'image'].includes(mode) ? mode : FLOOR_MATERIAL_MODES.COLOR;
+        }
+
+        function getEditorWallMode() {
+            return normalizeEditorWallMode(editorTextureSettings.wallMode);
+        }
+
+        function getEditorFloorMode() {
+            return normalizeEditorFloorMode(editorTextureSettings.floorMode);
+        }
+
+        function clearEditorImage(kind) {
+            if (kind === 'wall') {
+                editorTextureSettings.wallImage = '';
+                editorWallTexture = null;
+                localStorage.removeItem('editorWallImage');
+                if (editorWallInput) editorWallInput.value = '';
+            } else {
+                editorTextureSettings.floorImage = '';
+                editorFloorTexture = null;
+                localStorage.removeItem('editorFloorImage');
+                if (editorFloorInput) editorFloorInput.value = '';
+            }
+        }
+
+        function setEditorWallMode(mode, reload = false) {
+            const nextMode = normalizeEditorWallMode(mode);
+            editorTextureSettings.wallMode = nextMode;
+            localStorage.setItem('editorWallMode', nextMode);
+            if (nextMode !== WALL_MATERIAL_MODES.IMAGE) clearEditorImage('wall');
+            updateEditorMaterialUI();
+            updateEditorStatus();
+            if (reload) loadEditorStage(editorTextureSettings.selectedStage);
+        }
+
+        function setEditorFloorMode(mode, reload = false) {
+            const nextMode = normalizeEditorFloorMode(mode);
+            editorTextureSettings.floorMode = nextMode;
+            localStorage.setItem('editorFloorMode', nextMode);
+            if (nextMode !== FLOOR_MATERIAL_MODES.IMAGE) clearEditorImage('floor');
+            updateEditorMaterialUI();
+            updateEditorStatus();
+            if (reload) loadEditorStage(editorTextureSettings.selectedStage);
+        }
+
+        function updateEditorMaterialModeOptions() {
+            if (editorWallModeSelect) {
+                const wallOptions = [
+                    { value: WALL_MATERIAL_MODES.PALETTE, zh: '默认方向配色', en: 'Direction Palette' },
+                    { value: WALL_MATERIAL_MODES.COLOR, zh: '单色配色', en: 'Solid Color' },
+                    { value: WALL_MATERIAL_MODES.IMAGE, zh: '本地图片', en: 'Local Image' }
+                ];
+                wallOptions.forEach(optionData => {
+                    const option = editorWallModeSelect.querySelector(`option[value="${optionData.value}"]`);
+                    if (option) option.textContent = t(optionData.zh, optionData.en);
+                });
+            }
+            if (editorFloorModeSelect) {
+                const floorOptions = [
+                    { value: FLOOR_MATERIAL_MODES.COLOR, zh: '配色', en: 'Color' },
+                    { value: FLOOR_MATERIAL_MODES.IMAGE, zh: '本地图片', en: 'Local Image' }
+                ];
+                floorOptions.forEach(optionData => {
+                    const option = editorFloorModeSelect.querySelector(`option[value="${optionData.value}"]`);
+                    if (option) option.textContent = t(optionData.zh, optionData.en);
+                });
+            }
+        }
+
         function parseEditorTextureSize(value) {
             return Math.max(0.5, Math.min(4, parseFloat(value) || 1));
         }
 
         function updateEditorMaterialUI() {
+            updateEditorMaterialModeOptions();
+            const wallMode = getEditorWallMode();
+            const floorMode = getEditorFloorMode();
+            const wallUsesImage = wallMode === WALL_MATERIAL_MODES.IMAGE;
+            const wallUsesColor = wallMode === WALL_MATERIAL_MODES.COLOR;
+            const floorUsesImage = floorMode === FLOOR_MATERIAL_MODES.IMAGE;
+            const floorUsesColor = floorMode === FLOOR_MATERIAL_MODES.COLOR;
+            if (editorWallModeSelect) editorWallModeSelect.value = wallMode;
+            if (editorFloorModeSelect) editorFloorModeSelect.value = floorMode;
             if (editorWallColorInput) editorWallColorInput.value = editorTextureSettings.wallColor || DEFAULT_WALL_COLOR;
             if (editorFloorColorInput) editorFloorColorInput.value = editorTextureSettings.floorColor || DEFAULT_FLOOR_COLOR;
             if (editorWallSizeInput) editorWallSizeInput.value = String(editorTextureSettings.wallTextureSize);
             if (editorFloorSizeInput) editorFloorSizeInput.value = String(editorTextureSettings.floorTextureSize);
             if (editorWallSizeValue) editorWallSizeValue.textContent = `${Number(editorTextureSettings.wallTextureSize).toFixed(1)}x`;
             if (editorFloorSizeValue) editorFloorSizeValue.textContent = `${Number(editorTextureSettings.floorTextureSize).toFixed(1)}x`;
+            if (editorWallInput) editorWallInput.disabled = !wallUsesImage;
+            if (editorWallColorInput) editorWallColorInput.disabled = !wallUsesColor;
+            if (editorWallSizeInput) editorWallSizeInput.disabled = !wallUsesImage;
+            if (editorFloorInput) editorFloorInput.disabled = !floorUsesImage;
+            if (editorFloorColorInput) editorFloorColorInput.disabled = !floorUsesColor;
+            if (editorFloorSizeInput) editorFloorSizeInput.disabled = !floorUsesImage;
         }
 
         function preloadEditorTextures() {
-            if (editorTextureSettings.wallImage) {
+            if (getEditorWallMode() === WALL_MATERIAL_MODES.IMAGE && editorTextureSettings.wallImage) {
                 editorWallTexture = createEditorTexture(editorTextureSettings.wallImage, 'wall');
             }
-            if (editorTextureSettings.floorImage) {
+            if (getEditorFloorMode() === FLOOR_MATERIAL_MODES.IMAGE && editorTextureSettings.floorImage) {
                 editorFloorTexture = createEditorTexture(editorTextureSettings.floorImage, 'floor');
             }
         }
@@ -594,7 +712,9 @@
                 const dataUrl = String(reader.result || '');
                 let storageWarning = false;
                 if (kind === 'wall') {
+                    editorTextureSettings.wallMode = WALL_MATERIAL_MODES.IMAGE;
                     editorTextureSettings.wallImage = dataUrl;
+                    localStorage.setItem('editorWallMode', WALL_MATERIAL_MODES.IMAGE);
                     try {
                         localStorage.setItem('editorWallImage', dataUrl);
                     } catch (error) {
@@ -603,7 +723,9 @@
                     }
                     editorWallTexture = createEditorTexture(dataUrl, 'wall', () => loadEditorStage(editorTextureSettings.selectedStage));
                 } else {
+                    editorTextureSettings.floorMode = FLOOR_MATERIAL_MODES.IMAGE;
                     editorTextureSettings.floorImage = dataUrl;
+                    localStorage.setItem('editorFloorMode', FLOOR_MATERIAL_MODES.IMAGE);
                     try {
                         localStorage.setItem('editorFloorImage', dataUrl);
                     } catch (error) {
@@ -612,6 +734,7 @@
                     }
                     editorFloorTexture = createEditorTexture(dataUrl, 'floor', () => loadEditorStage(editorTextureSettings.selectedStage));
                 }
+                updateEditorMaterialUI();
                 if (!storageWarning) updateEditorStatus();
             };
             reader.readAsDataURL(file);
@@ -646,16 +769,14 @@
         }
 
         function resetEditorTextures() {
-            editorTextureSettings.wallImage = '';
-            editorTextureSettings.floorImage = '';
-            localStorage.removeItem('editorWallImage');
-            localStorage.removeItem('editorFloorImage');
+            editorTextureSettings.wallMode = WALL_MATERIAL_MODES.PALETTE;
+            editorTextureSettings.floorMode = FLOOR_MATERIAL_MODES.COLOR;
+            localStorage.setItem('editorWallMode', WALL_MATERIAL_MODES.PALETTE);
+            localStorage.setItem('editorFloorMode', FLOOR_MATERIAL_MODES.COLOR);
+            clearEditorImage('wall');
+            clearEditorImage('floor');
             localStorage.setItem('editorWallColor', editorTextureSettings.wallColor || DEFAULT_WALL_COLOR);
             localStorage.setItem('editorFloorColor', editorTextureSettings.floorColor || DEFAULT_FLOOR_COLOR);
-            editorWallTexture = null;
-            editorFloorTexture = null;
-            if (editorWallInput) editorWallInput.value = '';
-            if (editorFloorInput) editorFloorInput.value = '';
             updateEditorMaterialUI();
             loadEditorStage(editorTextureSettings.selectedStage);
             updateEditorStatus();
@@ -663,22 +784,20 @@
 
         function updateEditorStatus() {
             if (!editorStatusElement) return;
-            const wallReady = !!editorTextureSettings.wallImage;
-            const floorReady = !!editorTextureSettings.floorImage;
+            const wallMode = getEditorWallMode();
+            const floorMode = getEditorFloorMode();
+            const wallReady = wallMode === WALL_MATERIAL_MODES.IMAGE && !!editorTextureSettings.wallImage;
+            const floorReady = floorMode === FLOOR_MATERIAL_MODES.IMAGE && !!editorTextureSettings.floorImage;
             const customReady = !!localStorage.getItem('customLevelData');
-            if (wallReady && floorReady) {
-                editorStatusElement.textContent = customReady
-                    ? t('墙体、地面和自定义关卡已保存', 'Wall, floor, and custom level saved')
-                    : t('墙体和地面已自定义', 'Wall and floor customized');
-            } else if (wallReady) {
-                editorStatusElement.textContent = t('墙体已自定义', 'Wall customized');
-            } else if (floorReady) {
-                editorStatusElement.textContent = t('地面已自定义', 'Floor customized');
-            } else if (customReady) {
-                editorStatusElement.textContent = t('自定义关卡已保存', 'Custom level saved');
-            } else {
-                editorStatusElement.textContent = t('使用高对比默认材质', 'High-contrast default materials');
-            }
+            const wallStatus = wallMode === WALL_MATERIAL_MODES.IMAGE
+                ? (wallReady ? t('墙体：本地图片', 'Wall: local image') : t('墙体：等待上传图片', 'Wall: waiting for image'))
+                : (wallMode === WALL_MATERIAL_MODES.COLOR ? t('墙体：单色配色', 'Wall: solid color') : t('墙体：默认方向配色', 'Wall: direction palette'));
+            const floorStatus = floorMode === FLOOR_MATERIAL_MODES.IMAGE
+                ? (floorReady ? t('地面：本地图片', 'Floor: local image') : t('地面：等待上传图片', 'Floor: waiting for image'))
+                : t('地面：配色', 'Floor: color');
+            editorStatusElement.textContent = customReady
+                ? `${wallStatus} · ${floorStatus} · ${t('自定义关卡已保存', 'Custom level saved')}`
+                : `${wallStatus} · ${floorStatus}`;
         }
 
         function getDefaultCustomLevel() {
@@ -2156,7 +2275,8 @@ if (isTimerRunning) {
         };
 
         function createWallFaceMaterial(directionColor, sourceColor = 0xaaaaaa) {
-            if (editorWallTexture) {
+            const wallMode = getEditorWallMode();
+            if (wallMode === WALL_MATERIAL_MODES.IMAGE && editorWallTexture) {
                 return new THREE.MeshStandardMaterial({
                     color: 0xffffff,
                     map: editorWallTexture,
@@ -2165,7 +2285,9 @@ if (isTimerRunning) {
                     roughness: 0.2
                 });
             }
-            const selectedWallColor = editorTextureSettings.wallColor || '';
+            const selectedWallColor = wallMode === WALL_MATERIAL_MODES.COLOR
+                ? (editorTextureSettings.wallColor || DEFAULT_WALL_COLOR)
+                : '';
             const color = new THREE.Color(selectedWallColor || directionColor);
             if (sourceColor !== 0xaaaaaa) {
                 color.lerp(new THREE.Color(sourceColor), selectedWallColor ? 0.06 : 0.14);
@@ -2295,7 +2417,8 @@ if (isTimerRunning) {
         
         function createFloor(width, depth, material) {
             const g = new THREE.PlaneGeometry(width, depth);
-            const m = editorFloorTexture
+            const floorMode = getEditorFloorMode();
+            const m = (floorMode === FLOOR_MATERIAL_MODES.IMAGE && editorFloorTexture)
                 ? new THREE.MeshStandardMaterial({
                     color: 0xffffff,
                     map: editorFloorTexture,
@@ -3730,6 +3853,9 @@ function setupStage28_Survival1() { setupSurvivalArena({ size: 36, targetTime: 3
                     }
                 } 
                 else {
+                    if (!canTurretsAttackPlayer()) {
+                        collision = true;
+                    } else {
                     const playerBox = new THREE.Box3().setFromCenterAndSize(camera.position, new THREE.Vector3(playerRadius*2, playerHeight, playerRadius*2));
                     playerBox.min.y = camera.position.y - playerHeight;
                     playerBox.max.y = camera.position.y;
@@ -3745,6 +3871,7 @@ function setupStage28_Survival1() { setupSurvivalArena({ size: 36, targetTime: 3
                         if (intersects.length > 0 && intersects[0].distance < bulletMoveVector.length()) {
                             collision = true;
                         }
+                    }
                     }
                 }
 
@@ -4401,11 +4528,37 @@ function getTurretBaseCooldown() {
     return base;
 }
 
+        function canTurretsAttackPlayer() {
+            const hasAnnihilationGoal = isCustomStage(currentStage)
+                && scene
+                && scene.userData
+                && scene.userData.customGoals
+                && scene.userData.customGoals.annihilation;
+            const isActiveTurretStage = (currentStage >= 22 && currentStage <= 26)
+                || hasAnnihilationGoal
+                || (typeof isSurvivalStage === 'function' && isSurvivalStage(currentStage));
+            return isActiveTurretStage
+                && document.pointerLockElement === document.body
+                && canPlayerMove
+                && !editorTextureSettings.active
+                && !isPlayerDead
+                && !stageCompletionFlag
+                && !isTransitioning;
+        }
+
 
         function updateTurrets(deltaTime) {
+            const canAttackPlayer = canTurretsAttackPlayer();
             turrets.forEach(turret => {
+                if (!turret || !turret.userData || turret.userData.disabled) return;
                 const head = turret.userData.head;
+                if (!head || !turret.userData.eye) return;
                 const distanceToPlayer = turret.position.distanceTo(camera.position);
+
+                if (!canAttackPlayer) {
+                    if (!turret.userData.isHit) turret.userData.eye.material.emissive.setHex(0x550000);
+                    return;
+                }
 
                 if (distanceToPlayer < 30) {
                     const turretDirection = new THREE.Vector3();

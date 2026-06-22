@@ -136,6 +136,14 @@
             <select id="editor-level-select"></select>
         </label>
         <label class="editor-row editor-row-stacked">
+            <span id="editor-wall-mode-label">墙体材质模式 / Wall Material Mode</span>
+            <select id="editor-wall-material-mode">
+                <option value="palette">默认方向配色 / Direction Palette</option>
+                <option value="color">单色配色 / Solid Color</option>
+                <option value="image">本地图片 / Local Image</option>
+            </select>
+        </label>
+        <label class="editor-row editor-row-stacked">
             <span id="editor-wall-label">墙体图片 / Wall Image</span>
             <input type="file" id="editor-wall-image" accept="image/*">
         </label>
@@ -147,6 +155,13 @@
             <span id="editor-wall-size-label">墙体图片大小 / Wall Image Size</span>
             <input type="range" id="editor-wall-texture-size" min="0.5" max="4" step="0.1" value="1">
             <span id="editor-wall-size-value">1.0x</span>
+        </label>
+        <label class="editor-row editor-row-stacked">
+            <span id="editor-floor-mode-label">地面材质模式 / Floor Material Mode</span>
+            <select id="editor-floor-material-mode">
+                <option value="color">配色 / Color</option>
+                <option value="image">本地图片 / Local Image</option>
+            </select>
         </label>
         <label class="editor-row editor-row-stacked">
             <span id="editor-floor-label">地面图片 / Floor Image</span>

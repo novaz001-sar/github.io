@@ -338,6 +338,11 @@ body {
             width: 100%;
             accent-color: #00e5ff;
         }
+        .editor-row input:disabled,
+        .editor-row select:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
         .editor-row select option {
             color: #111;
         }
