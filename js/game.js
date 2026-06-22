@@ -22,7 +22,8 @@
         const DEFAULT_FLOOR_COLOR = '#5cff72';
         const WALL_MATERIAL_MODES = { PALETTE: 'palette', COLOR: 'color', IMAGE: 'image' };
         const FLOOR_MATERIAL_MODES = { COLOR: 'color', IMAGE: 'image' };
-        const EDITOR_MATERIAL_MODE_VERSION = '2';
+        const WALL_IMAGE_DIRECTIONS = ['east', 'west', 'south', 'north'];
+        const EDITOR_MATERIAL_MODE_VERSION = '3';
         if (localStorage.getItem('editorMaterialModeVersion') !== EDITOR_MATERIAL_MODE_VERSION) {
             localStorage.removeItem('editorWallMode');
             localStorage.removeItem('editorFloorMode');
@@ -38,6 +39,12 @@
                 ? storedEditorFloorMode
                 : FLOOR_MATERIAL_MODES.COLOR,
             wallImage: localStorage.getItem('editorWallImage') || '',
+            wallImages: {
+                east: localStorage.getItem('editorWallImageEast') || '',
+                west: localStorage.getItem('editorWallImageWest') || '',
+                south: localStorage.getItem('editorWallImageSouth') || '',
+                north: localStorage.getItem('editorWallImageNorth') || ''
+            },
             floorImage: localStorage.getItem('editorFloorImage') || '',
             wallColor: localStorage.getItem('editorWallColor') || DEFAULT_WALL_COLOR,
             floorColor: localStorage.getItem('editorFloorColor') || DEFAULT_FLOOR_COLOR,
@@ -47,6 +54,7 @@
             active: false
         };
         let editorWallTexture = null;
+        let editorDirectionalWallTextures = { east: null, west: null, south: null, north: null };
         let editorFloorTexture = null;
         let editorTool = 'wall';
         let customLevelData = null;
@@ -127,6 +135,7 @@
         let warmupConfirmOverlay; 
         let warmupTargetSettingsPanel, warmupTargetMovingInput, warmupTargetSpeedInput, warmupTargetSpeedValue;
         let editorPanel, editorLevelSelect, editorWallInput, editorFloorInput, editorStatusElement;
+        let editorWallDirectionInputs = {};
         let editorWallModeSelect, editorFloorModeSelect;
         let editorWallColorInput, editorFloorColorInput, editorWallSizeInput, editorFloorSizeInput;
         let editorWallSizeValue, editorFloorSizeValue;
@@ -252,6 +261,10 @@
             editorWallModeSelect = document.getElementById('editor-wall-material-mode');
             editorFloorModeSelect = document.getElementById('editor-floor-material-mode');
             editorWallInput = document.getElementById('editor-wall-image');
+            editorWallDirectionInputs = {};
+            WALL_IMAGE_DIRECTIONS.forEach(direction => {
+                editorWallDirectionInputs[direction] = document.getElementById(`editor-wall-${direction}-image`);
+            });
             editorFloorInput = document.getElementById('editor-floor-image');
             editorWallColorInput = document.getElementById('editor-wall-color');
             editorFloorColorInput = document.getElementById('editor-floor-color');
@@ -338,7 +351,12 @@
             { selector: '#editor-level-label', zh: '关卡', en: 'Level' },
             { selector: '#editor-wall-mode-label', zh: '墙体材质模式', en: 'Wall Material Mode' },
             { selector: '#editor-floor-mode-label', zh: '地面材质模式', en: 'Floor Material Mode' },
-            { selector: '#editor-wall-label', zh: '墙体图片', en: 'Wall Image' },
+            { selector: '#editor-wall-label', zh: '墙体通用图片', en: 'Wall Fallback Image' },
+            { selector: '#editor-wall-direction-title', zh: '方向墙体图片', en: 'Direction Wall Images' },
+            { selector: '#editor-wall-east-label', zh: '东向墙体图片', en: 'East Wall Image' },
+            { selector: '#editor-wall-west-label', zh: '西向墙体图片', en: 'West Wall Image' },
+            { selector: '#editor-wall-south-label', zh: '南向墙体图片', en: 'South Wall Image' },
+            { selector: '#editor-wall-north-label', zh: '北向墙体图片', en: 'North Wall Image' },
             { selector: '#editor-floor-label', zh: '地面图片', en: 'Floor Image' },
             { selector: '#editor-wall-color-label', zh: '墙体配色', en: 'Wall Color' },
             { selector: '#editor-floor-color-label', zh: '地面配色', en: 'Floor Color' },
@@ -507,6 +525,12 @@
             if (editorWallInput) {
                 editorWallInput.addEventListener('change', () => handleEditorImageUpload(editorWallInput, 'wall'));
             }
+            WALL_IMAGE_DIRECTIONS.forEach(direction => {
+                const input = editorWallDirectionInputs[direction];
+                if (input) {
+                    input.addEventListener('change', () => handleEditorImageUpload(input, 'wallDirection', direction));
+                }
+            });
             if (editorFloorInput) {
                 editorFloorInput.addEventListener('change', () => handleEditorImageUpload(editorFloorInput, 'floor'));
             }
@@ -536,6 +560,7 @@
                     editorTextureSettings.wallTextureSize = parseEditorTextureSize(editorWallSizeInput.value);
                     localStorage.setItem('editorWallTextureSize', String(editorTextureSettings.wallTextureSize));
                     updateEditorTextureRepeat(editorWallTexture, 'wall');
+                    WALL_IMAGE_DIRECTIONS.forEach(direction => updateEditorTextureRepeat(editorDirectionalWallTextures[direction], 'wall'));
                     updateEditorMaterialUI();
                     loadEditorStage(editorTextureSettings.selectedStage);
                 });
@@ -586,9 +611,28 @@
             return normalizeEditorFloorMode(editorTextureSettings.floorMode);
         }
 
+        function getWallDirectionStorageKey(direction) {
+            return `editorWallImage${direction.charAt(0).toUpperCase()}${direction.slice(1)}`;
+        }
+
+        function countEditorWallDirectionImages() {
+            return WALL_IMAGE_DIRECTIONS.filter(direction => !!editorTextureSettings.wallImages[direction]).length;
+        }
+
+        function getEditorWallTextureForDirection(direction) {
+            return editorDirectionalWallTextures[direction] || editorWallTexture;
+        }
+
         function clearEditorImage(kind) {
             if (kind === 'wall') {
                 editorTextureSettings.wallImage = '';
+                WALL_IMAGE_DIRECTIONS.forEach(direction => {
+                    editorTextureSettings.wallImages[direction] = '';
+                    editorDirectionalWallTextures[direction] = null;
+                    localStorage.removeItem(getWallDirectionStorageKey(direction));
+                    const input = editorWallDirectionInputs[direction];
+                    if (input) input.value = '';
+                });
                 editorWallTexture = null;
                 localStorage.removeItem('editorWallImage');
                 if (editorWallInput) editorWallInput.value = '';
@@ -604,7 +648,11 @@
             const nextMode = normalizeEditorWallMode(mode);
             editorTextureSettings.wallMode = nextMode;
             localStorage.setItem('editorWallMode', nextMode);
-            if (nextMode !== WALL_MATERIAL_MODES.IMAGE) clearEditorImage('wall');
+            if (nextMode !== WALL_MATERIAL_MODES.IMAGE) {
+                clearEditorImage('wall');
+            } else {
+                preloadEditorTextures();
+            }
             updateEditorMaterialUI();
             updateEditorStatus();
             if (reload) loadEditorStage(editorTextureSettings.selectedStage);
@@ -665,6 +713,10 @@
             if (editorWallSizeValue) editorWallSizeValue.textContent = `${Number(editorTextureSettings.wallTextureSize).toFixed(1)}x`;
             if (editorFloorSizeValue) editorFloorSizeValue.textContent = `${Number(editorTextureSettings.floorTextureSize).toFixed(1)}x`;
             if (editorWallInput) editorWallInput.disabled = !wallUsesImage;
+            WALL_IMAGE_DIRECTIONS.forEach(direction => {
+                const input = editorWallDirectionInputs[direction];
+                if (input) input.disabled = !wallUsesImage;
+            });
             if (editorWallColorInput) editorWallColorInput.disabled = !wallUsesColor;
             if (editorWallSizeInput) editorWallSizeInput.disabled = !wallUsesImage;
             if (editorFloorInput) editorFloorInput.disabled = !floorUsesImage;
@@ -675,9 +727,21 @@
         function preloadEditorTextures() {
             if (getEditorWallMode() === WALL_MATERIAL_MODES.IMAGE && editorTextureSettings.wallImage) {
                 editorWallTexture = createEditorTexture(editorTextureSettings.wallImage, 'wall');
+            } else if (getEditorWallMode() !== WALL_MATERIAL_MODES.IMAGE || !editorTextureSettings.wallImage) {
+                editorWallTexture = null;
             }
+            WALL_IMAGE_DIRECTIONS.forEach(direction => {
+                const imageData = editorTextureSettings.wallImages[direction];
+                if (getEditorWallMode() === WALL_MATERIAL_MODES.IMAGE && imageData) {
+                    editorDirectionalWallTextures[direction] = createEditorTexture(imageData, 'wall');
+                } else if (getEditorWallMode() !== WALL_MATERIAL_MODES.IMAGE || !imageData) {
+                    editorDirectionalWallTextures[direction] = null;
+                }
+            });
             if (getEditorFloorMode() === FLOOR_MATERIAL_MODES.IMAGE && editorTextureSettings.floorImage) {
                 editorFloorTexture = createEditorTexture(editorTextureSettings.floorImage, 'floor');
+            } else if (getEditorFloorMode() !== FLOOR_MATERIAL_MODES.IMAGE || !editorTextureSettings.floorImage) {
+                editorFloorTexture = null;
             }
         }
 
@@ -742,24 +806,35 @@
             updateEditorStatus();
         }
 
-        function handleEditorImageUpload(input, kind) {
+        function handleEditorImageUpload(input, kind, direction = '') {
             const file = input && input.files ? input.files[0] : null;
             if (!file) return;
             const reader = new FileReader();
             reader.onload = () => {
                 const dataUrl = String(reader.result || '');
                 let storageWarning = false;
-                if (kind === 'wall') {
+                if (kind === 'wall' || kind === 'wallDirection') {
                     editorTextureSettings.wallMode = WALL_MATERIAL_MODES.IMAGE;
-                    editorTextureSettings.wallImage = dataUrl;
                     localStorage.setItem('editorWallMode', WALL_MATERIAL_MODES.IMAGE);
-                    try {
-                        localStorage.setItem('editorWallImage', dataUrl);
-                    } catch (error) {
-                        storageWarning = true;
-                        if (editorStatusElement) editorStatusElement.textContent = t('图片过大，仅应用到当前预览', 'Image too large; applied to current preview only');
+                    if (kind === 'wallDirection' && WALL_IMAGE_DIRECTIONS.includes(direction)) {
+                        editorTextureSettings.wallImages[direction] = dataUrl;
+                        try {
+                            localStorage.setItem(getWallDirectionStorageKey(direction), dataUrl);
+                        } catch (error) {
+                            storageWarning = true;
+                            if (editorStatusElement) editorStatusElement.textContent = t('图片过大，仅应用到当前预览', 'Image too large; applied to current preview only');
+                        }
+                        editorDirectionalWallTextures[direction] = createEditorTexture(dataUrl, 'wall', () => loadEditorStage(editorTextureSettings.selectedStage));
+                    } else {
+                        editorTextureSettings.wallImage = dataUrl;
+                        try {
+                            localStorage.setItem('editorWallImage', dataUrl);
+                        } catch (error) {
+                            storageWarning = true;
+                            if (editorStatusElement) editorStatusElement.textContent = t('图片过大，仅应用到当前预览', 'Image too large; applied to current preview only');
+                        }
+                        editorWallTexture = createEditorTexture(dataUrl, 'wall', () => loadEditorStage(editorTextureSettings.selectedStage));
                     }
-                    editorWallTexture = createEditorTexture(dataUrl, 'wall', () => loadEditorStage(editorTextureSettings.selectedStage));
                 } else {
                     editorTextureSettings.floorMode = FLOOR_MATERIAL_MODES.IMAGE;
                     editorTextureSettings.floorImage = dataUrl;
@@ -830,11 +905,16 @@
             if (!editorStatusElement) return;
             const wallMode = getEditorWallMode();
             const floorMode = getEditorFloorMode();
-            const wallReady = wallMode === WALL_MATERIAL_MODES.IMAGE && !!editorTextureSettings.wallImage;
+            const wallDirectionImageCount = countEditorWallDirectionImages();
+            const wallReady = wallMode === WALL_MATERIAL_MODES.IMAGE && (!!editorTextureSettings.wallImage || wallDirectionImageCount > 0);
             const floorReady = floorMode === FLOOR_MATERIAL_MODES.IMAGE && !!editorTextureSettings.floorImage;
             const customReady = !!localStorage.getItem('customLevelData');
             const wallStatus = wallMode === WALL_MATERIAL_MODES.IMAGE
-                ? (wallReady ? t('墙体：本地图片', 'Wall: local image') : t('墙体：等待上传图片', 'Wall: waiting for image'))
+                ? (wallReady
+                    ? (wallDirectionImageCount > 0
+                        ? t(`墙体：方向图片 ${wallDirectionImageCount}/4`, `Wall: direction images ${wallDirectionImageCount}/4`)
+                        : t('墙体：通用本地图片', 'Wall: fallback local image'))
+                    : t('墙体：等待上传图片', 'Wall: waiting for image'))
                 : (wallMode === WALL_MATERIAL_MODES.COLOR ? t('墙体：单色配色', 'Wall: solid color') : t('墙体：配色模式（默认方向配色）', 'Wall: color mode (direction palette)'));
             const floorStatus = floorMode === FLOOR_MATERIAL_MODES.IMAGE
                 ? (floorReady ? t('地面：本地图片', 'Floor: local image') : t('地面：等待上传图片', 'Floor: waiting for image'))
@@ -2333,10 +2413,11 @@ if (isTimerRunning) {
             });
         }
 
-        function createWallFaceMaterial(directionColor, sourceColor = 0xaaaaaa) {
+        function createWallFaceMaterial(direction, directionColor, sourceColor = 0xaaaaaa) {
             const wallMode = getEditorWallMode();
-            if (wallMode === WALL_MATERIAL_MODES.IMAGE && editorWallTexture) {
-                return createEditorImageMaterial(editorWallTexture, 'wall');
+            const wallTexture = getEditorWallTextureForDirection(direction);
+            if (wallMode === WALL_MATERIAL_MODES.IMAGE && wallTexture) {
+                return createEditorImageMaterial(wallTexture, 'wall');
             }
             const selectedWallColor = wallMode === WALL_MATERIAL_MODES.COLOR
                 ? (editorTextureSettings.wallColor || DEFAULT_WALL_COLOR)
@@ -2356,12 +2437,12 @@ if (isTimerRunning) {
 
         function createDirectionalWallMaterials(sourceColor = 0xaaaaaa) {
             return [
-                createWallFaceMaterial(WALL_DIRECTION_COLORS.east, sourceColor),
-                createWallFaceMaterial(WALL_DIRECTION_COLORS.west, sourceColor),
-                createWallFaceMaterial(WALL_DIRECTION_COLORS.top, sourceColor),
-                createWallFaceMaterial(WALL_DIRECTION_COLORS.bottom, sourceColor),
-                createWallFaceMaterial(WALL_DIRECTION_COLORS.south, sourceColor),
-                createWallFaceMaterial(WALL_DIRECTION_COLORS.north, sourceColor)
+                createWallFaceMaterial('east', WALL_DIRECTION_COLORS.east, sourceColor),
+                createWallFaceMaterial('west', WALL_DIRECTION_COLORS.west, sourceColor),
+                createWallFaceMaterial('top', WALL_DIRECTION_COLORS.top, sourceColor),
+                createWallFaceMaterial('bottom', WALL_DIRECTION_COLORS.bottom, sourceColor),
+                createWallFaceMaterial('south', WALL_DIRECTION_COLORS.south, sourceColor),
+                createWallFaceMaterial('north', WALL_DIRECTION_COLORS.north, sourceColor)
             ];
         }
 

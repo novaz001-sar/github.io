@@ -144,9 +144,28 @@
             </select>
         </label>
         <label class="editor-row editor-row-stacked">
-            <span id="editor-wall-label">墙体图片 / Wall Image</span>
+            <span id="editor-wall-label">墙体通用图片 / Wall Fallback Image</span>
             <input type="file" id="editor-wall-image" accept="image/*">
         </label>
+        <div class="editor-section editor-wall-image-section">
+            <div id="editor-wall-direction-title" class="editor-small-title">方向墙体图片 / Direction Wall Images</div>
+            <label class="editor-row editor-row-stacked">
+                <span id="editor-wall-east-label">东向墙体图片 / East Wall Image</span>
+                <input type="file" id="editor-wall-east-image" class="editor-wall-direction-image" data-wall-direction="east" accept="image/*">
+            </label>
+            <label class="editor-row editor-row-stacked">
+                <span id="editor-wall-west-label">西向墙体图片 / West Wall Image</span>
+                <input type="file" id="editor-wall-west-image" class="editor-wall-direction-image" data-wall-direction="west" accept="image/*">
+            </label>
+            <label class="editor-row editor-row-stacked">
+                <span id="editor-wall-south-label">南向墙体图片 / South Wall Image</span>
+                <input type="file" id="editor-wall-south-image" class="editor-wall-direction-image" data-wall-direction="south" accept="image/*">
+            </label>
+            <label class="editor-row editor-row-stacked">
+                <span id="editor-wall-north-label">北向墙体图片 / North Wall Image</span>
+                <input type="file" id="editor-wall-north-image" class="editor-wall-direction-image" data-wall-direction="north" accept="image/*">
+            </label>
+        </div>
         <label class="editor-row editor-row-stacked">
             <span id="editor-wall-color-label">墙体配色 / Wall Color</span>
             <input type="color" id="editor-wall-color" value="#ff00f5">
