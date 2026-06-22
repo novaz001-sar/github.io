@@ -22,6 +22,7 @@
         </div>
         <button id="campaign-mode-button" class="mode-button">生涯模式<br><span style="font-size:12px;">Campaign Mode</span></button>
         <button id="free-mode-button" class="mode-button">自由模式<br><span style="font-size:12px;">Free Mode</span></button>
+        <button id="editor-mode-button" class="mode-button">编辑器模式<br><span style="font-size:12px;">Editor Mode</span></button>
     </div>
 
     <div id="profile-creation-overlay" class="overlay" style="display: none; z-index: 14;">
@@ -126,6 +127,28 @@
     </div>
     <div id="minimap-container"><canvas id="minimap"></canvas></div>
     <div id="narration-box"></div>
+
+    <div id="editor-panel" class="editor-panel" style="display: none;">
+        <h2 id="editor-panel-title">编辑器模式 / Editor Mode</h2>
+        <label class="editor-row editor-row-stacked">
+            <span id="editor-level-label">关卡 / Level</span>
+            <select id="editor-level-select"></select>
+        </label>
+        <label class="editor-row editor-row-stacked">
+            <span id="editor-wall-label">墙体图片 / Wall Image</span>
+            <input type="file" id="editor-wall-image" accept="image/*">
+        </label>
+        <label class="editor-row editor-row-stacked">
+            <span id="editor-floor-label">地面图片 / Floor Image</span>
+            <input type="file" id="editor-floor-image" accept="image/*">
+        </label>
+        <div id="editor-status" class="editor-status"></div>
+        <div class="editor-button-row">
+            <button id="editor-apply-button" class="editor-button">应用 / Apply</button>
+            <button id="editor-reset-button" class="editor-button editor-button-secondary">重置 / Reset</button>
+        </div>
+        <button id="editor-main-menu-button" class="editor-button editor-button-wide">主菜单 / Main Menu</button>
+    </div>
 
     <div id="menu-overlay" class="overlay">
         <div id="menu-content">
