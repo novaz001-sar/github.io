@@ -15,6 +15,11 @@
     <script src="js/intro.js"></script>
     <div id="mode-selection" class="overlay">
         <h1>选择训练模式 / Select Mode</h1>
+        <div id="mode-language-selector" class="language-selector" aria-label="Language">
+            <span id="mode-language-label">语言 / Language</span>
+            <button type="button" class="language-option" data-language="zh">中文</button>
+            <button type="button" class="language-option" data-language="en">English</button>
+        </div>
         <button id="campaign-mode-button" class="mode-button">生涯模式<br><span style="font-size:12px;">Campaign Mode</span></button>
         <button id="free-mode-button" class="mode-button">自由模式<br><span style="font-size:12px;">Free Mode</span></button>
     </div>
@@ -107,11 +112,28 @@
 
     <div id="timer">0.00s</div>
     <div id="warmup-timer-display"></div>
+    <div id="warmup-target-settings" class="settings-panel" style="display: none;">
+        <div id="warmup-target-title" class="settings-title">热身靶子设置 / Warm-up Target</div>
+        <label class="settings-row">
+            <input type="checkbox" id="warmup-target-moving">
+            <span id="warmup-target-moving-label">靶子移动 / Moving target</span>
+        </label>
+        <label class="settings-row settings-row-stacked">
+            <span id="warmup-target-speed-label">移动速度 / Speed</span>
+            <input type="range" id="warmup-target-speed" min="0.5" max="5" step="0.5" value="1.5">
+            <span id="warmup-target-speed-value">1.5x</span>
+        </label>
+    </div>
     <div id="minimap-container"><canvas id="minimap"></canvas></div>
     <div id="narration-box"></div>
 
     <div id="menu-overlay" class="overlay">
         <div id="menu-content">
+            <div id="menu-language-selector" class="language-selector" aria-label="Language">
+                <span id="menu-language-label">语言 / Language</span>
+                <button type="button" class="language-option" data-language="zh">中文</button>
+                <button type="button" class="language-option" data-language="en">English</button>
+            </div>
             <button class="menu-button" id="resume-button">继续训练<br>Resume</button>
             <button class="menu-button" id="restart-button">重新开始<br>Restart</button>
             <button class="menu-button" id="select-level-button">选择关卡<br>Select Level</button>

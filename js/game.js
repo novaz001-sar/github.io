@@ -9,6 +9,11 @@
         const moveSpeed = 5.0;
         const crouchSpeed = 2.5;
         const keys = {};
+        let languageMode = localStorage.getItem('languageMode') || 'zh';
+        const warmupTargetSettings = {
+            moving: localStorage.getItem('warmupTargetMoving') === 'true',
+            speed: parseFloat(localStorage.getItem('warmupTargetSpeed') || '1.5')
+        };
 
         // Map arrow keys to WASD movement
         document.addEventListener('keydown', function(event) {
@@ -83,6 +88,7 @@
         let keyDisplay, keyW, keyA, keyS, keyD, keySpace, keyShift;
         let narrationBox, resultsOverlay, trainingChoiceOverlay, trainingCommandElement, resetConfirmOverlay;
         let warmupConfirmOverlay; 
+        let warmupTargetSettingsPanel, warmupTargetMovingInput, warmupTargetSpeedInput, warmupTargetSpeedValue;
         let healthContainer, healthBar, healthText;
 
         // --- Stage Specific Variables ---
@@ -137,7 +143,6 @@
 
         let stonePathTexture, metallicPatternFloorTexture, shuttleRunStoneTexture, shuttleRunMetalTexture;
         let shuttleRunFloorTexture, missionCorridorFloorTexture;
-        let mazeWallMaterial, shuttleRunWallMaterials;
 
         window.onload = function() {
             init();
@@ -192,6 +197,10 @@
             resetConfirmOverlay = document.getElementById('reset-confirm-overlay');
             warmupConfirmOverlay = document.getElementById('warmup-confirm-overlay');
             warmupTimerDisplayElement = document.getElementById('warmup-timer-display');
+            warmupTargetSettingsPanel = document.getElementById('warmup-target-settings');
+            warmupTargetMovingInput = document.getElementById('warmup-target-moving');
+            warmupTargetSpeedInput = document.getElementById('warmup-target-speed');
+            warmupTargetSpeedValue = document.getElementById('warmup-target-speed-value');
             healthContainer = document.getElementById('player-health-container');
             healthBar = document.getElementById('player-health-bar');
             healthText = document.getElementById('player-health-text');
@@ -205,6 +214,9 @@
             setupTrainingChoice();
             setupResetConfirmation();
             setupWarmupConfirmation(); 
+            setupLanguageControls();
+            setupWarmupTargetSettings();
+            applyLanguage();
             document.addEventListener('pointerlockchange', onPointerlockChange, false);
             document.addEventListener('pointerlockerror', onPointerlockError, false);
             document.addEventListener('keydown', onKeyDown, false);
@@ -213,6 +225,145 @@
             document.addEventListener('mousedown', onMouseDown, false);
 
             animate();
+        }
+
+        const STATIC_I18N = [
+            { selector: '#mode-selection h1', zh: '选择训练模式', en: 'Select Mode' },
+            { selector: '#mode-language-label', zh: '语言', en: 'Language' },
+            { selector: '#menu-language-label', zh: '语言', en: 'Language' },
+            { selector: '#campaign-mode-button', zh: '生涯模式', en: 'Campaign Mode' },
+            { selector: '#free-mode-button', zh: '自由模式', en: 'Free Mode' },
+            { selector: '#profile-form h2', zh: '创建您的档案', en: 'Create Your Profile' },
+            { selector: '#nickname-input', attr: 'placeholder', zh: '请输入您的昵称', en: 'Enter Nickname' },
+            { selector: '#male-button', zh: '我是叔叔', en: 'I am Uncle' },
+            { selector: '#female-button', zh: '我是阿姨', en: 'I am Auntie' },
+            { selector: '#start-campaign-button', zh: '开始训练', en: 'Start Training' },
+            { selector: '#results-title', zh: '能力认证', en: 'Cognitive Mastery' },
+            { selector: '#close-results-button', zh: '太棒了！返回菜单', en: 'Awesome! Back to Menu' },
+            { selector: '#training-choice-box h2', zh: '移动特训', en: 'Movement Special Training' },
+            { selector: '#training-choice-box p', zh: '您想开始带有指令的移动特训吗？', en: 'Would you like to start special training with commands?' },
+            { selector: '#training-yes', zh: '是', en: 'Yes' },
+            { selector: '#training-no', zh: '否', en: 'No' },
+            { selector: '#reset-confirm-box h2', zh: '重置档案？', en: 'Reset Profile?' },
+            { selector: '#reset-confirm-box p', zh: '您确定要清除所有训练记录吗？此操作无法撤销。', en: 'Are you sure you want to erase all progress? This action cannot be undone.' },
+            { selector: '#reset-confirm-yes', zh: '确定', en: 'Confirm' },
+            { selector: '#reset-confirm-no', zh: '取消', en: 'Cancel' },
+            { selector: '#warmup-confirm-box h2', zh: '开始训练？', en: 'Start Training?' },
+            { selector: '#warmup-confirm-box p', zh: '热身结束！准备好开始第一项认知训练了吗？', en: 'Warm-up complete! Are you ready to start the first cognitive training?' },
+            { selector: '#warmup-confirm-yes', zh: '准备好了', en: 'Yes' },
+            { selector: '#warmup-confirm-no', zh: '再等等', en: 'Not Yet' },
+            { selector: '#resume-button', zh: '继续训练', en: 'Resume' },
+            { selector: '#restart-button', zh: '重新开始', en: 'Restart' },
+            { selector: '#select-level-button', zh: '选择关卡', en: 'Select Level' },
+            { selector: '#warmup-button', zh: '返回热身', en: 'Warm-up' },
+            { selector: '#main-menu-button', zh: '返回主菜单', en: 'Main Menu' },
+            { selector: '#reset-game-button', zh: '重置档案', en: 'Reset Profile' },
+            { selector: '#warmup-target-title', zh: '热身靶子设置', en: 'Warm-up Target' },
+            { selector: '#warmup-target-moving-label', zh: '靶子移动', en: 'Moving target' },
+            { selector: '#warmup-target-speed-label', zh: '移动速度', en: 'Speed' },
+            { selector: '#key-space', zh: '空格', en: 'Space' }
+        ];
+
+        function t(zh, en) {
+            return languageMode === 'en' ? en : zh;
+        }
+
+        function setupLanguageControls() {
+            document.querySelectorAll('.language-option').forEach(button => {
+                button.addEventListener('click', () => {
+                    setLanguageMode(button.dataset.language === 'en' ? 'en' : 'zh');
+                });
+            });
+        }
+
+        function setLanguageMode(mode) {
+            languageMode = mode === 'en' ? 'en' : 'zh';
+            localStorage.setItem('languageMode', languageMode);
+            applyLanguage();
+            updateLevelSelectMenu();
+            updatePlayerInfoUI();
+            updateInstructions();
+            updateCurrentCounters();
+        }
+
+        function applyLanguage() {
+            document.documentElement.lang = languageMode === 'en' ? 'en' : 'zh';
+            STATIC_I18N.forEach(item => {
+                const element = document.querySelector(item.selector);
+                if (!element) return;
+                const value = t(item.zh, item.en);
+                if (item.attr) {
+                    element.setAttribute(item.attr, value);
+                } else {
+                    element.innerHTML = value;
+                }
+            });
+            document.querySelectorAll('.language-option').forEach(button => {
+                button.classList.toggle('active', button.dataset.language === languageMode);
+            });
+            updateWarmupTargetSettingsUI();
+        }
+
+        function localizeBilingualHtml(html) {
+            if (!html) return '';
+            const englishSpanPattern = /<span style="font-size:\s*14px;\s*color:\s*#ccc;">([\s\S]*?)<\/span>/g;
+            if (languageMode === 'zh') {
+                return html
+                    .replace(/<br><span style="font-size:\s*14px;\s*color:\s*#ccc;">[\s\S]*?<\/span><br>/g, '<br>')
+                    .replace(/<br><br><span style="font-size:\s*14px;\s*color:\s*#ccc;">[\s\S]*?<\/span>/g, '')
+                    .replace(/<span style="font-size:\s*12px;">[\s\S]*?<\/span>/g, '');
+            }
+
+            const parts = [];
+            let match;
+            while ((match = englishSpanPattern.exec(html)) !== null) {
+                parts.push(match[1]);
+            }
+            const continueMatch = html.match(/<div style="([^"]+)">([\s\S]*?)<\/div>/);
+            if (parts.length === 0) return html;
+            if (continueMatch) {
+                parts.push(`<div style="${continueMatch[1]}">${continueMatch[2]}</div>`);
+            }
+            return parts.join('<br><br>');
+        }
+
+        function setupWarmupTargetSettings() {
+            if (!warmupTargetMovingInput || !warmupTargetSpeedInput) return;
+            warmupTargetMovingInput.checked = warmupTargetSettings.moving;
+            warmupTargetSpeedInput.value = String(warmupTargetSettings.speed);
+            warmupTargetMovingInput.addEventListener('change', () => {
+                warmupTargetSettings.moving = warmupTargetMovingInput.checked;
+                localStorage.setItem('warmupTargetMoving', String(warmupTargetSettings.moving));
+            });
+            warmupTargetSpeedInput.addEventListener('input', () => {
+                warmupTargetSettings.speed = Math.max(0.5, Math.min(5, parseFloat(warmupTargetSpeedInput.value) || 1.5));
+                localStorage.setItem('warmupTargetSpeed', String(warmupTargetSettings.speed));
+                updateWarmupTargetSettingsUI();
+            });
+            updateWarmupTargetSettingsUI();
+        }
+
+        function updateWarmupTargetSettingsUI() {
+            if (warmupTargetSpeedValue) {
+                warmupTargetSpeedValue.textContent = `${Number(warmupTargetSettings.speed).toFixed(1)}x`;
+            }
+            if (warmupTargetSettingsPanel) {
+                warmupTargetSettingsPanel.style.display = currentStage === 0 ? 'block' : 'none';
+            }
+        }
+
+        function updateCurrentCounters() {
+            if (currentStage >= 13 && currentStage <= 15) updateNpcCounter();
+            if (currentStage >= 16 && currentStage <= 26) {
+                updateLandmarkCounter();
+                updateMapUsesCounter();
+            }
+            if (currentStage >= 2 && currentStage <= 4 && shuttleRunState.targets) {
+                updateGenericCounter(t(`已完成: ${shuttleRunState.completedCount || 0} / 10`, `Completed: ${shuttleRunState.completedCount || 0} / 10`));
+            }
+            if (currentStage === 5 && corridorState.allTargets) {
+                updateGenericCounter(t(`已激活: ${activatedCorridorTargets.size} / ${corridorState.allTargets.length}`, `Activated: ${activatedCorridorTargets.size} / ${corridorState.allTargets.length}`));
+            }
         }
 
         function loadProgress() {
@@ -452,13 +603,13 @@ function updateLevelSelectMenu() {
         const button = document.createElement('button');
         button.className = 'menu-button';
         const isLocked = (gameMode === 'campaign' && stageId > unlockedLevel);
-        let buttonHTML = `${zh}<br><span style="font-size:12px;">${en}</span>`;
+        let buttonHTML = t(zh, en);
         if (isLocked) {
-            buttonHTML += ' <br><span style="font-size:12px; color: #888;">(锁定 / Locked)</span>';
+            buttonHTML += ` <br><span style="font-size:12px; color: #888;">${t('(锁定)', '(Locked)')}</span>`;
             button.classList.add('disabled');
         } else {
             const bestTime = levelTimes[stageId];
-            if (bestTime) { buttonHTML += `<div class="level-time">最快 / Best: ${bestTime.toFixed(2)}s</div>`; }
+            if (bestTime) { buttonHTML += `<div class="level-time">${t('最快', 'Best')}: ${bestTime.toFixed(2)}s</div>`; }
             if (gameMode === 'campaign' && levelStars[stageId]) {
                 buttonHTML += `<div class="level-stars">${displayStars(levelStars[stageId])}</div>`;
             }
@@ -544,7 +695,7 @@ function updateLevelSelectMenu() {
                 trainingCommandElement.style.display = 'none';
                 currentTrainingKey = null;
                 isWaitingForNextCommand = false;
-                showNarration('已取消移动特训。<br>Canceled special training.');
+                showNarration(t('已取消移动特训。', 'Canceled special training.'));
                 return;
             }
 
@@ -628,6 +779,7 @@ if (toyGun) toyGun.visible = (stageIndex === 0 || isTurretLevel) && !isSurvival;
             resultsOverlay.style.display = 'none';
             trainingChoiceOverlay.style.display = 'none';
             trainingCommandElement.style.display = 'none';
+            updateWarmupTargetSettingsUI();
 
             switch(currentStage) {
                 case 0: setupStage0_Warmup(); break;
@@ -719,10 +871,10 @@ if (typeof isSurvivalStage === 'function' && isSurvivalStage(currentStage)) {
             if (gameMode === 'campaign' && currentStage > 0 && currentStage < TOTAL_LEVELS) {
                 const playerNameElement = document.getElementById('player-name');
                 const playerStarsElement = document.getElementById('player-stars');
-                playerNameElement.textContent = playerProfile.title;
+                playerNameElement.textContent = t(playerProfile.title, playerProfile.en_title || playerProfile.title);
                 const currentStars = Object.values(levelStars).reduce((sum, stars) => sum + stars, 0);
                 const totalStars = Object.keys(starTimeThresholds).length * 3;
-                playerStarsElement.innerHTML = `星星 / Stars: ${currentStars} / ${totalStars} <span class="star-filled">★</span>`;
+                playerStarsElement.innerHTML = `${t('星星', 'Stars')}: ${currentStars} / ${totalStars} <span class="star-filled">★</span>`;
                 playerInfoElement.style.display = 'block';
             } else {
                 playerInfoElement.style.display = 'none';
@@ -739,18 +891,18 @@ if (typeof isSurvivalStage === 'function' && isSurvivalStage(currentStage)) {
             starContainer.innerHTML = ''; 
 
             if (isPlayerDead) {
-                 text = `您已被击败！<br><br><span style="${enStyle}">You have been defeated!</span><br><br><div style="${clickContinueStyle}">点击以重新开始 / Click to Restart</div>`;
+                 text = `您已被击败！<br><br><span style="${enStyle}">You have been defeated!</span><br><br><div style="${clickContinueStyle}">${t('点击以重新开始', 'Click to Restart')}</div>`;
             } else if (stageCompletionFlag) {
                 const elapsedTime = (clock.getElapsedTime() - levelStartTime);
                 let continueText;
                 if (gameMode === 'campaign') {
                     const stars = levelStars[currentStage] || 1;
                     starContainer.innerHTML = displayStars(stars);
-                    continueText = (currentStage < TOTAL_LEVELS) ? "点击进入下一关 / Click for Next Level" : "点击查看最终认证 / Click for Final Results";
+                    continueText = (currentStage < TOTAL_LEVELS) ? t("点击进入下一关", "Click for Next Level") : t("点击查看最终认证", "Click for Final Results");
                     text = `太棒了, ${playerProfile.title}！<br>训练完成！<br>用时: **${elapsedTime.toFixed(2)}** 秒<br><br><span style="${enStyle}">Great job, ${playerProfile.en_title}!<br>Training Complete!<br>Time: **${elapsedTime.toFixed(2)}** seconds</span><br><br><div style="${clickContinueStyle}">${continueText}</div>`;
                 } else { 
                     recordTime(currentStage, elapsedTime);
-                    continueText = "点击返回菜单 / Click to Return to Menu";
+                    continueText = t("点击返回菜单", "Click to Return to Menu");
                     text = `训练完成！<br>用时: **${elapsedTime.toFixed(2)}** 秒<br><br><span style="${enStyle}">Training Complete!<br>Time: **${elapsedTime.toFixed(2)}** seconds</span><br><br><div style="${clickContinueStyle}">${continueText}</div>`;
                 }
             } else {
@@ -788,10 +940,10 @@ const elapsed = (clock.getElapsedTime() - levelStartTime);
                         const need = scene.userData.survivalTargetTime || 30;
                         text = `${greeting}**生存试炼：炮塔竞技**<br>在空旷场地中利用**小墙体**与**左右移动**躲避炮塔射击。<br>HP为5，每次命中-1。坚持 **${need} 秒** 即可通关。<br><br><span style="${enStyle}">**Survival: Turret Arena**<br>Use the small cover and strafe left/right to evade the turret. You have 5 HP; survive **${need} s** to win.</span>`; break;
                     case 27: text = ``; break;
-                    default: text = `点击鼠标左键开始<br><span style="font-size:12px;">Left Click to Start</span>`; break;
+                    default: text = t(`点击鼠标左键开始`, `Left Click to Start`); break;
                 }
             }
-            instructionTextElement.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<span style="color: #ffdd57;">$1</span>');
+            instructionTextElement.innerHTML = localizeBilingualHtml(text).replace(/\*\*(.*?)\*\*/g, '<span style="color: #ffdd57;">$1</span>');
         }
 
 
@@ -894,7 +1046,7 @@ if (isTimerRunning) {
                             create3DFirework(shuttleRunState.activeTarget.position);
                             shuttleRunState.activeTarget.material = shuttleRunMaterials.yellow;
                             shuttleRunState.completedCount++;
-                            updateGenericCounter(`已完成: ${shuttleRunState.completedCount} / 10`);
+                            updateGenericCounter(t(`已完成: ${shuttleRunState.completedCount} / 10`, `Completed: ${shuttleRunState.completedCount} / 10`));
                             updateInstructions();
                             if (shuttleRunState.completedCount >= shuttleRunState.targets.length) {
                                 shouldAdvance = true;
@@ -1002,7 +1154,7 @@ if (isTimerRunning) {
                     minimapContainer.style.display = 'block';
                 } else {
                     if (minimapContainer.style.display === 'none') { 
-                         showNarration('地图使用次数已用完！<br>No map uses left!');
+                         showNarration(t('地图使用次数已用完！', 'No map uses left!'));
                     }
                 }
             }
@@ -1141,16 +1293,6 @@ if (isTimerRunning) {
             shuttleRunFloorTexture = createClassicalPatternTexture();
             missionCorridorFloorTexture = createSimpleGridTexture();
 
-            mazeWallMaterial = new THREE.MeshStandardMaterial({
-                color: 0xF5F5DC,
-                metalness: 0.7,
-                roughness: 0.4
-            });
-
-            shuttleRunWallMaterials = [
-                new THREE.MeshStandardMaterial({ map: shuttleRunStoneTexture, roughness: 0.8, metalness: 0.1 }),
-                new THREE.MeshStandardMaterial({ map: shuttleRunMetalTexture, roughness: 0.8, metalness: 0.6 })
-            ];
         }
 
         function createClassicalPatternTexture() {
@@ -1224,7 +1366,113 @@ if (isTimerRunning) {
             return texture;
         }
 
-        function createWall(x, y, z, width, height, depth, color = 0xaaaaaa) { const g = new THREE.BoxGeometry(width, height, depth); const m = new THREE.MeshStandardMaterial({ color: color }); const w = new THREE.Mesh(g, m); w.position.set(x, y, z); w.receiveShadow = true; w.castShadow = true; scene.add(w); stageObjects.push(w); collidables.push(w); return w; }
+        const WALL_DIRECTION_COLORS = {
+            east: 0xff2bd6,
+            west: 0x00e5ff,
+            south: 0x76ff03,
+            north: 0xff8a00,
+            top: 0xffea00,
+            bottom: 0x181818
+        };
+
+        function createWallFaceMaterial(directionColor, sourceColor = 0xaaaaaa) {
+            const color = new THREE.Color(directionColor);
+            if (sourceColor !== 0xaaaaaa) {
+                color.lerp(new THREE.Color(sourceColor), 0.18);
+            }
+            const emissive = color.clone().multiplyScalar(0.16);
+            return new THREE.MeshStandardMaterial({
+                color,
+                emissive,
+                metalness: 0.86,
+                roughness: 0.18
+            });
+        }
+
+        function createDirectionalWallMaterials(sourceColor = 0xaaaaaa) {
+            return [
+                createWallFaceMaterial(WALL_DIRECTION_COLORS.east, sourceColor),
+                createWallFaceMaterial(WALL_DIRECTION_COLORS.west, sourceColor),
+                createWallFaceMaterial(WALL_DIRECTION_COLORS.top, sourceColor),
+                createWallFaceMaterial(WALL_DIRECTION_COLORS.bottom, sourceColor),
+                createWallFaceMaterial(WALL_DIRECTION_COLORS.south, sourceColor),
+                createWallFaceMaterial(WALL_DIRECTION_COLORS.north, sourceColor)
+            ];
+        }
+
+        function createWallGemLights(x, y, z, width, height, depth) {
+            if (!scene || height < 0.6) return;
+            const lengthAxis = width >= depth ? 'x' : 'z';
+            const length = lengthAxis === 'x' ? width : depth;
+            if (length < 2.5) return;
+
+            const sideFaces = lengthAxis === 'x'
+                ? [
+                    { axis: 'z', sign: 1, color: WALL_DIRECTION_COLORS.south },
+                    { axis: 'z', sign: -1, color: WALL_DIRECTION_COLORS.north }
+                ]
+                : [
+                    { axis: 'x', sign: 1, color: WALL_DIRECTION_COLORS.east },
+                    { axis: 'x', sign: -1, color: WALL_DIRECTION_COLORS.west }
+                ];
+            const gemCount = Math.max(1, Math.min(4, Math.floor(length / 7)));
+            const gemGroup = new THREE.Group();
+            const gemGeometry = new THREE.OctahedronGeometry(0.22, 0);
+            let gemIndex = 0;
+
+            sideFaces.forEach(face => {
+                for (let i = 0; i < gemCount; i++) {
+                    const offset = -length / 2 + ((i + 1) * length / (gemCount + 1));
+                    const gemColor = new THREE.Color(face.color);
+                    const gemMaterial = new THREE.MeshStandardMaterial({
+                        color: gemColor,
+                        emissive: gemColor,
+                        emissiveIntensity: 1.25,
+                        metalness: 0.72,
+                        roughness: 0.08,
+                        transparent: true,
+                        opacity: 0.92
+                    });
+                    const gem = new THREE.Mesh(gemGeometry, gemMaterial);
+                    gem.position.set(
+                        lengthAxis === 'x' ? x + offset : x + face.sign * (width / 2 + 0.08),
+                        y + Math.min(height * 0.24, 1.1),
+                        lengthAxis === 'x' ? z + face.sign * (depth / 2 + 0.08) : z + offset
+                    );
+                    gem.rotation.set(Math.PI / 4, Math.PI / 4, 0);
+                    gem.castShadow = true;
+                    gem.userData.baseY = gem.position.y;
+                    gem.userData.phase = gemIndex * 0.9;
+                    gemGroup.add(gem);
+                    gemIndex++;
+                }
+            });
+
+            gemGroup.userData.animation = (time) => {
+                gemGroup.children.forEach((gem, index) => {
+                    gem.position.y = gem.userData.baseY + Math.sin(time * 1.6 + gem.userData.phase) * 0.12;
+                    gem.rotation.y = time * 0.8 + index;
+                    gem.rotation.x = Math.PI / 4 + Math.sin(time * 1.2 + index) * 0.15;
+                });
+            };
+            scene.add(gemGroup);
+            stageObjects.push(gemGroup);
+            animatedObjects.push(gemGroup);
+        }
+
+        function createWall(x, y, z, width, height, depth, color = 0xaaaaaa) {
+            const g = new THREE.BoxGeometry(width, height, depth);
+            const m = createDirectionalWallMaterials(color);
+            const w = new THREE.Mesh(g, m);
+            w.position.set(x, y, z);
+            w.receiveShadow = true;
+            w.castShadow = true;
+            scene.add(w);
+            stageObjects.push(w);
+            collidables.push(w);
+            createWallGemLights(x, y, z, width, height, depth);
+            return w;
+        }
         
         function createFloor(width, depth, material) {
             const g = new THREE.PlaneGeometry(width, depth);
@@ -1273,7 +1521,51 @@ if (isTimerRunning) {
         }
 
         function createCapsule(r, h, c) { const g = new THREE.Group(); const m = new THREE.MeshStandardMaterial({ color: c }); const ch = h - (r * 2); const cg = new THREE.CylinderGeometry(r, r, ch, 32); const cyl = new THREE.Mesh(cg, m); cyl.castShadow = true; cyl.receiveShadow = true; g.add(cyl); const sg = new THREE.SphereGeometry(r, 32, 16); const ts = new THREE.Mesh(sg, m); ts.position.y = ch / 2; ts.castShadow = true; ts.receiveShadow = true; g.add(ts); const bs = new THREE.Mesh(sg, m); bs.position.y = -ch / 2; bs.castShadow = true; bs.receiveShadow = true; g.add(bs); g.velocity = new THREE.Vector3(); return g; }
-        function createCircularTarget() { const g = new THREE.Group(); g.name = "warmup_target"; const rings = [{ c: 0xffffff, r: 1.5 }, { c: 0xffffff, r: 1.3 }, { c: 0x000000, r: 1.1 }, { c: 0x000000, r: 0.9 }, { c: 0x87CEEB, r: 0.7 }, { c: 0x87CEEB, r: 0.5 }, { c: 0xFF4500, r: 0.4 }, { c: 0xFF4500, r: 0.3 }, { c: 0xFFD700, r: 0.2 }, { c: 0xFFD700, r: 0.1 }]; for (let i = 0; i < rings.length; i++) { const ring = rings[i]; let geo; if (i === rings.length - 1) { geo = new THREE.CircleGeometry(ring.r, 32); } else { geo = new THREE.RingGeometry(rings[i+1].r, ring.r, 32); } const mat = new THREE.MeshStandardMaterial({ color: ring.c, side: THREE.DoubleSide, emissive: 0x000000 }); const mesh = new THREE.Mesh(geo, mat); mesh.position.z = i * 0.001; mesh.userData.isTargetRing = true; g.add(mesh); stageObjects.push(mesh); collidables.push(mesh); } const sg = new THREE.BoxGeometry(0.1, 1.5, 0.1); const sm = new THREE.MeshStandardMaterial({ color: 0x8B4513 }); const s = new THREE.Mesh(sg, sm); s.position.y = -0.75; s.position.z = -0.1; g.add(s); g.position.set(0, 2, -12); scene.add(g); stageObjects.push(g); animatedObjects.push(g); collidables.push(g);}
+        function createCircularTarget() {
+            const g = new THREE.Group();
+            g.name = "warmup_target";
+            const rings = [{ c: 0xffffff, r: 1.5 }, { c: 0xffffff, r: 1.3 }, { c: 0x000000, r: 1.1 }, { c: 0x000000, r: 0.9 }, { c: 0x87CEEB, r: 0.7 }, { c: 0x87CEEB, r: 0.5 }, { c: 0xFF4500, r: 0.4 }, { c: 0xFF4500, r: 0.3 }, { c: 0xFFD700, r: 0.2 }, { c: 0xFFD700, r: 0.1 }];
+            for (let i = 0; i < rings.length; i++) {
+                const ring = rings[i];
+                let geo;
+                if (i === rings.length - 1) {
+                    geo = new THREE.CircleGeometry(ring.r, 32);
+                } else {
+                    geo = new THREE.RingGeometry(rings[i + 1].r, ring.r, 32);
+                }
+                const mat = new THREE.MeshStandardMaterial({ color: ring.c, side: THREE.DoubleSide, emissive: 0x000000 });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.z = i * 0.001;
+                mesh.userData.isTargetRing = true;
+                g.add(mesh);
+                stageObjects.push(mesh);
+                collidables.push(mesh);
+            }
+            const sg = new THREE.BoxGeometry(0.1, 1.5, 0.1);
+            const sm = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+            const s = new THREE.Mesh(sg, sm);
+            s.position.y = -0.75;
+            s.position.z = -0.1;
+            g.add(s);
+            g.position.set(0, 2, -12);
+            g.userData.basePosition = g.position.clone();
+            g.userData.animation = (time) => {
+                const base = g.userData.basePosition;
+                if (warmupTargetSettings.moving) {
+                    const speed = warmupTargetSettings.speed;
+                    g.position.x = base.x + Math.sin(time * speed) * 4.2;
+                    g.position.y = base.y + Math.sin(time * speed * 1.4) * 0.55;
+                    g.position.z = base.z + Math.cos(time * speed * 0.75) * 1.6;
+                } else {
+                    g.position.copy(base);
+                }
+                g.rotation.y = Math.sin(time * 0.8) * 0.12;
+            };
+            scene.add(g);
+            stageObjects.push(g);
+            animatedObjects.push(g);
+            collidables.push(g);
+        }
         function createLandmark(x, z, num) { const lg = new THREE.CylinderGeometry(1, 1, 0.5, 32); const lm = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xccaa00, transparent: true, opacity: 0.8 }); const l = new THREE.Mesh(lg, lm); l.position.set(x, 0.25, z); l.userData = { isLandmark: true, number: num, isFound: false }; scene.add(l); stageObjects.push(l); landmarks.push(l); const loader = new THREE.FontLoader(); loader.load('https://threejs.org/examples/fonts/helvetiker_bold.typeface.json', (font) => { const tg = new THREE.TextGeometry(num.toString(), { font: font, size: 0.8, height: 0.1 }); tg.computeBoundingBox(); const tm = new THREE.MeshBasicMaterial({ color: 0x000000 }); const t = new THREE.Mesh(tg, tm); t.position.x = -0.5 * (tg.boundingBox.max.x - tg.boundingBox.min.x); t.position.y = 0.3; t.rotation.x = -Math.PI / 2; l.add(t); }); return l; }
         function createInstructionText(text, font, position, color = 0xffffff) { const textLines = text.split('\n'); const textGroup = new THREE.Group(); const textMat = new THREE.MeshBasicMaterial({ color: color }); textLines.forEach((line, index) => { const textGeo = new THREE.TextGeometry(line, { font: font, size: 0.3, height: 0.01 }); textGeo.computeBoundingBox(); const textMesh = new THREE.Mesh(textGeo, textMat); textMesh.position.x = -0.5 * (textGeo.boundingBox.max.x - textGeo.boundingBox.min.x); textMesh.position.y = -index * 0.4; textGroup.add(textMesh); }); textGroup.position.copy(position); textGroup.rotation.x = -Math.PI / 2; scene.add(textGroup); stageObjects.push(textGroup); return textGroup; }
         function createPracticeAreaLayout(withObstacles = true) { createFloor(30, 30); createWall(0, 2.5, -15, 30, 5, 0.2); createWall(0, 2.5, 15, 30, 5, 0.2); createWall(-15, 2.5, 0, 0.2, 5, 30); createWall(15, 2.5, 0, 0.2, 5, 30); if (withObstacles) { const oW = 30, oH = 1.2, oD = 0.2; for (let i = 0; i < 5; i++) { createWall(0, oH / 2, -2 - (i * 2), oW, oH, oD, 0xcc5555); } } }
@@ -1374,11 +1666,11 @@ if (isTimerRunning) {
             
             let countdown = 30;
             warmupTimerDisplayElement.style.display = 'block';
-            warmupTimerDisplayElement.textContent = `第一关训练倒计时: ${countdown}s`;
+            warmupTimerDisplayElement.textContent = `${t('第一关训练倒计时', 'First training countdown')}: ${countdown}s`;
 
             warmupCountdownInterval = setInterval(() => {
                 countdown--;
-                warmupTimerDisplayElement.textContent = `第一关训练倒计时: ${countdown}s`;
+                warmupTimerDisplayElement.textContent = `${t('第一关训练倒计时', 'First training countdown')}: ${countdown}s`;
 
                 if (countdown <= 0) {
                     clearInterval(warmupCountdownInterval);
@@ -1456,7 +1748,10 @@ if (isTimerRunning) {
                 case 'S': direction_zh = '后'; direction_en = 'Backward'; break;
                 case 'D': direction_zh = '右'; direction_en = 'Right'; break;
             }
-            trainingCommandElement.innerHTML = `请移动到：${direction_zh} (${currentTrainingKey})<br><span style="font-size:16px; color: #ccc;">Please move to: ${direction_en} (${currentTrainingKey})</span><br><br><span style="font-size:12px; color: #aaa;">(点击鼠标左键可随时取消 / Left-click to cancel anytime)</span>`;
+            trainingCommandElement.innerHTML = t(
+                `请移动到：${direction_zh} (${currentTrainingKey})<br><br><span style="font-size:12px; color: #aaa;">点击鼠标左键可随时取消</span>`,
+                `Please move to: ${direction_en} (${currentTrainingKey})<br><br><span style="font-size:12px; color: #aaa;">Left-click to cancel anytime</span>`
+            );
             trainingCommandElement.style.display = 'block';
         }
 
@@ -1488,7 +1783,10 @@ if (isTimerRunning) {
                                                      playerPos.z >= box.min.z && playerPos.z <= box.max.z;
                         if (isPlayerOnCorrectKey) {
                             isWaitingForNextCommand = true;
-                            trainingCommandElement.innerHTML = `太棒了！请返回中心红色按钮<br><span style="font-size:16px; color: #ccc;">Great! Please return to the red button</span><br><br><span style="font-size:12px; color: #aaa;">(点击鼠标左键可随时取消 / Left-click to cancel anytime)</span>`;
+                            trainingCommandElement.innerHTML = t(
+                                `太棒了！请返回中心红色按钮<br><br><span style="font-size:12px; color: #aaa;">点击鼠标左键可随时取消</span>`,
+                                `Great! Please return to the red button<br><br><span style="font-size:12px; color: #aaa;">Left-click to cancel anytime</span>`
+                            );
                         }
                     }
                 } 
@@ -1588,45 +1886,18 @@ if (isTimerRunning) {
             };
             
             genericCounterElement.style.display = 'block';
-            updateGenericCounter(`已完成: 0 / 10`);
+            updateGenericCounter(t(`已完成: 0 / 10`, `Completed: 0 / 10`));
             
             activateNextShuttleTarget();
         }
 
         function createShuttleRunWalls(mapSize) {
             const wallHeight = 20;
-
-            shuttleRunWallMaterials.forEach(mat => {
-                if (mat.map) {
-                    mat.map.repeat.set(mapSize / 10, wallHeight / 10);
-                    mat.map.needsUpdate = true;
-                }
-            });
-
-            const wallGeo = new THREE.PlaneGeometry(mapSize, wallHeight);
-            
-            const wall1 = new THREE.Mesh(wallGeo, shuttleRunWallMaterials[0]); // Stone
-            wall1.position.set(0, wallHeight / 2, -mapSize / 2);
-            scene.add(wall1);
-            collidables.push(wall1);
-
-            const wall2 = new THREE.Mesh(wallGeo, shuttleRunWallMaterials[0]); // Stone
-            wall2.position.set(0, wallHeight / 2, mapSize / 2);
-            wall2.rotation.y = Math.PI;
-            scene.add(wall2);
-            collidables.push(wall2);
-            
-            const wall3 = new THREE.Mesh(wallGeo, shuttleRunWallMaterials[1]); // Metal
-            wall3.position.set(mapSize / 2, wallHeight / 2, 0);
-            wall3.rotation.y = -Math.PI / 2;
-            scene.add(wall3);
-            collidables.push(wall3);
-
-            const wall4 = new THREE.Mesh(wallGeo, shuttleRunWallMaterials[1]); // Metal
-            wall4.position.set(-mapSize / 2, wallHeight / 2, 0);
-            wall4.rotation.y = Math.PI / 2;
-            scene.add(wall4);
-            collidables.push(wall4);
+            const thickness = 0.35;
+            createWall(0, wallHeight / 2, -mapSize / 2, mapSize, wallHeight, thickness);
+            createWall(0, wallHeight / 2, mapSize / 2, mapSize, wallHeight, thickness);
+            createWall(mapSize / 2, wallHeight / 2, 0, thickness, wallHeight, mapSize);
+            createWall(-mapSize / 2, wallHeight / 2, 0, thickness, wallHeight, mapSize);
         }
 
         function createPillarsForShuttleRun(count, radius) {
@@ -1779,7 +2050,7 @@ if (isTimerRunning) {
             showNextCorridorBatch();
             
             genericCounterElement.style.display = 'block';
-            updateGenericCounter(`已激活: 0 / ${corridorState.allTargets.length}`);
+            updateGenericCounter(t(`已激活: 0 / ${corridorState.allTargets.length}`, `Activated: 0 / ${corridorState.allTargets.length}`));
         }
         
         function showNextCorridorBatch() {
@@ -1816,7 +2087,7 @@ if (isTimerRunning) {
                     activatedCorridorTargets.add(aimedObject);
                     corridorState.activatedInBatch++;
                     
-                    updateGenericCounter(`已激活: ${activatedCorridorTargets.size} / ${corridorState.allTargets.length}`);
+                    updateGenericCounter(t(`已激活: ${activatedCorridorTargets.size} / ${corridorState.allTargets.length}`, `Activated: ${activatedCorridorTargets.size} / ${corridorState.allTargets.length}`));
                     updateInstructions();
 
                     if (corridorState.activatedInBatch >= corridorState.spheresInCurrentBatch) {
@@ -1908,14 +2179,8 @@ if (isTimerRunning) {
                     const z = i * cellSize + offsetZ + cellSize / 2;
                     const cell = mazeLayout[i][j];
 
-                    if (cell === 1) { 
-                        const wall = new THREE.Mesh(wallGeo, mazeWallMaterial);
-                        wall.position.set(x, wallY, z);
-                        wall.receiveShadow = true;
-                        wall.castShadow = true;
-                        scene.add(wall);
-                        stageObjects.push(wall);
-                        collidables.push(wall);
+                    if (cell === 1) {
+                        createWall(x, wallY, z, cellSize, wallHeight, cellSize);
                     } else {
                         const distToStart = Math.sqrt(Math.pow(i - startCoords.r, 2) + Math.pow(j - startCoords.c, 2));
                         const distToEnd = Math.sqrt(Math.pow(i - endCoords.r, 2) + Math.pow(j - endCoords.c, 2));
@@ -1989,13 +2254,7 @@ if (isTimerRunning) {
                     const cell = mazeLayout[i][j];
 
                     if (cell === 1) {
-                        const wall = new THREE.Mesh(wallGeo, mazeWallMaterial);
-                        wall.position.set(x, wallY, z);
-                        wall.receiveShadow = true;
-                        wall.castShadow = true;
-                        scene.add(wall);
-                        stageObjects.push(wall);
-                        collidables.push(wall);
+                        createWall(x, wallY, z, cellSize, wallHeight, cellSize);
                     } else {
                         const distToStart = Math.sqrt(Math.pow(i - startCoords.r, 2) + Math.pow(j - startCoords.c, 2));
                         
@@ -2077,13 +2336,7 @@ if (isTimerRunning) {
                     const cell = mazeLayout[i][j];
 
                     if (cell === 1) {
-                        const wall = new THREE.Mesh(wallGeo, mazeWallMaterial);
-                        wall.position.set(x, wallY, z);
-                        wall.receiveShadow = true;
-                        wall.castShadow = true;
-                        scene.add(wall);
-                        stageObjects.push(wall);
-                        collidables.push(wall);
+                        createWall(x, wallY, z, cellSize, wallHeight, cellSize);
                     } else {
                         const distToStart = Math.sqrt(Math.pow(i - startCoords.r, 2) + Math.pow(j - startCoords.c, 2));
                         const isWall = (r, c) => (r < 0 || r >= mazeRows || c < 0 || c >= mazeCols || mazeLayout[r][c] === 1);
@@ -2365,22 +2618,25 @@ function setupStage28_Survival1() { setupSurvivalArena({ size: 36, targetTime: 3
             }, 1000);
             const totalStarsEarned = Object.values(levelStars).reduce((sum, stars) => sum + stars, 0);
             const maxStars = Object.keys(starTimeThresholds).length * 3;
-            let rank, rankColor, encouragementMessage;
+            let rank, rankColor, encouragementMessage, rankLevel;
             if (totalStarsEarned >= maxStars * (2/3)) {
-                rank = '认知大师<br><span class="podium-rank-en">Cognitive Master</span>';
+                rank = t('认知大师', 'Cognitive Master');
+                rankLevel = 'master';
                 rankColor = '#ffd700';
-                encouragementMessage = `太厉害了！您已精通所有认知挑战，展现了卓越的综合能力！<br><span class="en">Amazing! You've mastered all cognitive challenges, demonstrating outstanding comprehensive abilities!</span>`;
+                encouragementMessage = t('太厉害了！您已精通所有认知挑战，展现了卓越的综合能力！', `Amazing! You've mastered all cognitive challenges, demonstrating outstanding comprehensive abilities!`);
             } else if (totalStarsEarned >= maxStars * (1/3)) {
-                rank = '认知专家<br><span class="podium-rank-en">Cognitive Expert</span>';
+                rank = t('认知专家', 'Cognitive Expert');
+                rankLevel = 'expert';
                 rankColor = '#c0c0c0';
-                encouragementMessage = `非常出色！您掌握了绝大部分认知技巧，获得了高级认证！<br><span class="en">Excellent work! You've mastered most cognitive skills and earned an advanced certification!</span>`;
+                encouragementMessage = t('非常出色！您掌握了绝大部分认知技巧，获得了高级认证！', `Excellent work! You've mastered most cognitive skills and earned an advanced certification!`);
             } else {
-                rank = '认知学徒<br><span class="podium-rank-en">Cognitive Apprentice</span>';
+                rank = t('认知学徒', 'Cognitive Apprentice');
+                rankLevel = 'apprentice';
                 rankColor = '#cd7f32';
-                encouragementMessage = `恭喜您完成了所有训练，获得了基础能力认证！每一步都是了不起的进步！<br><span class="en">Congratulations on completing all the training and receiving a basic certification! Every step is great progress!</span>`;
+                encouragementMessage = t('恭喜您完成了所有训练，获得了基础能力认证！每一步都是了不起的进步！', 'Congratulations on completing all the training and receiving a basic certification! Every step is great progress!');
             }
-            document.getElementById('results-title').textContent = '综合能力认证 / Cognitive Mastery';
-            document.getElementById('player-final-title').innerHTML = `祝贺您, ${playerProfile.title}!<br><span style="font-size:16px; color: #ccc;">Congratulations, ${playerProfile.title}!</span>`;
+            document.getElementById('results-title').textContent = t('综合能力认证', 'Cognitive Mastery');
+            document.getElementById('player-final-title').innerHTML = t(`祝贺您, ${playerProfile.title}!`, `Congratulations, ${playerProfile.en_title || playerProfile.title}!`);
             document.getElementById('encouragement-message').innerHTML = encouragementMessage;
             const podium1 = document.getElementById('podium-1');
             const podium2 = document.getElementById('podium-2');
@@ -2389,9 +2645,9 @@ function setupStage28_Survival1() { setupSurvivalArena({ size: 36, targetTime: 3
             podium2.innerHTML = `<div class="podium-rank">2</div>`;
             podium3.innerHTML = `<div class="podium-rank">3</div>`;
             const playerPodiumHTML = `<div class="podium-rank" style="color:${rankColor};">${rank}</div><div class="podium-stars">${totalStarsEarned} ★</div>`;
-            if (rank.includes('Master')) {
+            if (rankLevel === 'master') {
                 podium1.innerHTML = playerPodiumHTML;
-            } else if (rank.includes('Expert')) {
+            } else if (rankLevel === 'expert') {
                 podium2.innerHTML = playerPodiumHTML;
             } else {
                 podium3.innerHTML = playerPodiumHTML;
@@ -2627,12 +2883,12 @@ function setupStage28_Survival1() { setupSurvivalArena({ size: 36, targetTime: 3
             if (keyShift) keyShift.classList.toggle('key-active', !!(keys['ShiftLeft'] || keys['ShiftRight']));
         }
 
-        function updateNpcCounter() { const total = scene.userData.totalNpcs || 0; const remaining = npcs.length; npcCounterElement.innerHTML = `已捕捉 / Caught: ${total - remaining} / ${total}`; }
-        function updateLandmarkCounter() { landmarkCounterElement.innerHTML = `已找到 / Found: ${nextLandmarkIndex} / ${landmarks.length}`; }
+        function updateNpcCounter() { const total = scene.userData.totalNpcs || 0; const remaining = npcs.length; npcCounterElement.innerHTML = `${t('已捕捉', 'Caught')}: ${total - remaining} / ${total}`; }
+        function updateLandmarkCounter() { landmarkCounterElement.innerHTML = `${t('已找到', 'Found')}: ${nextLandmarkIndex} / ${landmarks.length}`; }
         function updateGenericCounter(text) { genericCounterElement.innerHTML = text; }
         
         function updateMapUsesCounter() {
-            mapUsesCounterElement.innerHTML = `地图剩余次数: ${minimapUsesLeft}<br><span style="font-size:14px; color: #ccc;">Map Uses Left: ${minimapUsesLeft}</span>`;
+            mapUsesCounterElement.innerHTML = `${t('地图剩余次数', 'Map Uses Left')}: ${minimapUsesLeft}`;
         }
 
         function showNarration(text) {

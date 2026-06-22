@@ -205,6 +205,34 @@ body {
             border-color: #444;
             cursor: not-allowed;
         }
+        .language-selector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px #000;
+        }
+        .language-option {
+            min-width: 82px;
+            padding: 8px 12px;
+            border: 2px solid rgba(255, 255, 255, 0.55);
+            border-radius: 8px;
+            background: rgba(20, 20, 20, 0.72);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .language-option.active {
+            border-color: #ffdd57;
+            background: #ffdd57;
+            color: #111;
+            text-shadow: none;
+        }
         #reset-game-button {
             background-color: #b22222;
             border-color: #ff6347;
@@ -239,6 +267,51 @@ body {
         }
         .mode-button {
             margin: 10px;
+        }
+
+        .settings-panel {
+            position: absolute;
+            right: 20px;
+            bottom: 20px;
+            width: min(300px, calc(100vw - 40px));
+            padding: 14px 16px;
+            box-sizing: border-box;
+            background: rgba(8, 12, 18, 0.82);
+            border: 2px solid rgba(255, 255, 255, 0.55);
+            border-radius: 8px;
+            color: #fff;
+            z-index: 15;
+            text-shadow: 2px 2px 4px #000;
+        }
+        .settings-title {
+            margin-bottom: 10px;
+            color: #ffdd57;
+            font-size: 16px;
+            font-weight: 800;
+        }
+        .settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            min-height: 32px;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .settings-row input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #ffdd57;
+            flex: 0 0 auto;
+        }
+        .settings-row-stacked {
+            align-items: stretch;
+            flex-direction: column;
+            margin-top: 8px;
+        }
+        .settings-row input[type="range"] {
+            width: 100%;
+            accent-color: #00e5ff;
         }
 
         #minimap-container {
